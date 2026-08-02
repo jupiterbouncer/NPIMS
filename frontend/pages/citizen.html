@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Citizen Registration — NPIMS</title>
+  <style>
+    /* ── Tokens ── */
+    :root {
+      --navy:       #0D1F3C;
+      --navy-mid:   #162D54;
+      --blue:       #1A4A8A;
+      --blue-light: #2E6BC4;
+      --gold:       #C9A84C;
+      --white:      #FFFFFF;
+      --off-white:  #F4F6FA;
+      --grey-light: #E2E8F2;
+      --grey:       #8A97A8;
+      --text:       #1A2535;
+      --error:      #C0392B;
+      --success:    #1A7A4A;
+      --radius:     4px;
+      --shadow:     0 2px 12px rgba(13,31,60,0.10);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--off-white);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      border-bottom: 3px solid var(--gold);
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .crest {
+      width: 40px;
+      height: 40px;
+      background: var(--gold);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .header-title {
+      color: var(--white);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .header-subtitle {
+      color: var(--grey);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    nav {
+      display: flex;
+      gap: 4px;
+    }
+
+    nav a {
+      color: var(--grey);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      transition: color 0.2s, background 0.2s;
+    }
+
+    nav a:hover { color: var(--white); background: var(--navy-mid); }
+    nav a.active { color: var(--gold); border-bottom: 2px solid var(--gold); }
+
+    /* ── Page layout ── */
+    .page-header {
+      background: var(--navy-mid);
+      padding: 28px 40px;
+      border-bottom: 1px solid rgba(201,168,76,0.2);
+    }
+
+    .breadcrumb {
+      font-size: 11px;
+      color: var(--grey);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .breadcrumb span { color: var(--gold); }
+
+    .page-title {
+      color: var(--white);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .page-desc {
+      color: var(--grey);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    main {
+      max-width: 860px;
+      margin: 36px auto;
+      padding: 0 24px;
+    }
+
+    /* ── Notice banner ── */
+    .notice {
+      background: rgba(26,74,138,0.08);
+      border-left: 4px solid var(--blue-light);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      font-size: 13px;
+      color: var(--blue);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .notice-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--grey-light);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      background: var(--navy);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-header-icon {
+      color: var(--gold);
+      font-size: 16px;
+    }
+
+    .card-header h2 {
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .card-body { padding: 28px 24px; }
+
+    /* ── Form ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px 24px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--navy);
+    }
+
+    label .required {
+      color: var(--error);
+      margin-left: 3px;
+    }
+
+    input, select {
+      height: 40px;
+      border: 1px solid var(--grey-light);
+      border-radius: var(--radius);
+      padding: 0 12px;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--blue-light);
+      box-shadow: 0 0 0 3px rgba(46,107,196,0.12);
+    }
+
+    input.error { border-color: var(--error); }
+
+    .field-hint {
+      font-size: 11px;
+      color: var(--grey);
+      margin-top: 2px;
+    }
+
+    .field-error {
+      font-size: 11px;
+      color: var(--error);
+      margin-top: 2px;
+      display: none;
+    }
+
+    .field-error.visible { display: block; }
+
+    /* ── Divider ── */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 4px 0 20px;
+    }
+
+    .section-divider span {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--grey);
+      white-space: nowrap;
+    }
+
+    .section-divider::before,
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--grey-light);
+    }
+
+    /* ── Actions ── */
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 20px 24px;
+      background: var(--off-white);
+      border-top: 1px solid var(--grey-light);
+    }
+
+    .btn {
+      height: 40px;
+      padding: 0 24px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    .btn-secondary {
+      background: var(--white);
+      border: 1px solid var(--grey-light);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover { background: var(--grey-light); }
+
+    .btn-primary {
+      background: var(--blue);
+      color: var(--white);
+    }
+
+    .btn-primary:hover { background: var(--blue-light); }
+
+    .btn-primary:disabled {
+      background: var(--grey);
+      cursor: not-allowed;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      padding: 14px 20px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+      z-index: 999;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: var(--success); color: var(--white); }
+    .toast.error-toast { background: var(--error); color: var(--white); }
+
+    /* ── Lookup result ── */
+    .lookup-result {
+      display: none;
+      background: var(--off-white);
+      border: 1px solid var(--grey-light);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    .lookup-result.visible { display: block; }
+    .lookup-result .exists { color: var(--error); font-weight: 600; }
+    .lookup-result .available { color: var(--success); font-weight: 600; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      header { padding: 0 16px; }
+      nav { display: none; }
+      .page-header { padding: 20px 16px; }
+      main { padding: 0 12px; margin: 20px auto; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="crest">🏛️</div>
+    <div>
+      <div class="header-title">NPIMS</div>
+      <div class="header-subtitle">National Passport & Immigration Management</div>
+    </div>
+  </div>
+  <nav>
+    <a href="citizen.html" class="active">Citizens</a>
+    <a href="passport.html">Passports</a>
+    <a href="visa.html">Visas</a>
+    <a href="officers.html">Officers</a>
+    <a href="travel.html">Travel</a>
+    <a href="border.html">Border</a>
+    <a href="verification.html">Verification</a>
+  </nav>
+</header>
+
+<!-- Page header -->
+<div class="page-header">
+  <div class="breadcrumb">Dashboard / <span>Citizen Registration</span></div>
+  <div class="page-title">Citizen Registration</div>
+  <div class="page-desc">Register a new citizen record in the national database.</div>
+</div>
+
+<!-- Main -->
+<main>
+
+  <div class="notice">
+    <span class="notice-icon">ℹ️</span>
+    <div>All fields marked with <strong>*</strong> are required. A unique National ID Number must be provided — this serves as the citizen's permanent identifier across all system records.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-icon">👤</span>
+      <h2>Personal Information</h2>
+    </div>
+    <div class="card-body">
+      <form id="citizenForm" novalidate>
+
+        <!-- Identity -->
+        <div class="section-divider"><span>Identity</span></div>
+        <div class="form-grid">
+
+          <div class="form-group full">
+            <label for="nationalId">National ID Number <span class="required">*</span></label>
+            <input type="text" id="nationalId" placeholder="e.g. GHA-1234567890" maxlength="20" />
+            <div class="lookup-result" id="idLookup"></div>
+            <div class="field-error" id="nationalIdError">National ID is required.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="firstName">First Name <span class="required">*</span></label>
+            <input type="text" id="firstName" placeholder="First name" />
+            <div class="field-error" id="firstNameError">First name is required.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="lastName">Last Name <span class="required">*</span></label>
+            <input type="text" id="lastName" placeholder="Last name" />
+            <div class="field-error" id="lastNameError">Last name is required.</div>
+          </div>
+
+          <div class="form-group full">
+            <label for="otherName">Other Name(s)</label>
+            <input type="text" id="otherName" placeholder="Middle name or other names (optional)" />
+          </div>
+
+        </div>
+
+        <!-- Personal Details -->
+        <div class="section-divider" style="margin-top:28px;"><span>Personal Details</span></div>
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="dob">Date of Birth <span class="required">*</span></label>
+            <input type="date" id="dob" />
+            <div class="field-error" id="dobError">A valid date of birth is required.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="gender">Gender <span class="required">*</span></label>
+            <select id="gender">
+              <option value="">— Select —</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+            </select>
+            <div class="field-error" id="genderError">Please select a gender.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="countryCode">Country of Origin <span class="required">*</span></label>
+            <select id="countryCode">
+              <option value="">— Select Country —</option>
+              <option value="GH">Ghana</option>
+              <option value="NG">Nigeria</option>
+              <option value="ZA">South Africa</option>
+              <option value="KE">Kenya</option>
+              <option value="US">United States</option>
+              <option value="GB">United Kingdom</option>
+            </select>
+            <div class="field-hint">ISO country code</div>
+            <div class="field-error" id="countryError">Please select a country.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email Address <span class="required">*</span></label>
+            <input type="email" id="email" placeholder="citizen@example.com" />
+            <div class="field-error" id="emailError">A valid email address is required.</div>
+          </div>
+
+          <div class="form-group full">
+            <label for="address">Residential Address <span class="required">*</span></label>
+            <input type="text" id="address" placeholder="Street address, city" />
+            <div class="field-error" id="addressError">Address is required.</div>
+          </div>
+
+        </div>
+
+      </form>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="resetForm()">Clear Form</button>
+      <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">Register Citizen</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Set max DOB to today ──
+  document.getElementById('dob').max = new Date().toISOString().split('T')[0];
+
+  // ── Live ID lookup (checks if NationalID already exists) ──
+  document.getElementById('nationalId').addEventListener('blur', async function() {
+    const val = this.value.trim();
+    const lookup = document.getElementById('idLookup');
+    if (!val) { lookup.classList.remove('visible'); return; }
+
+    try {
+      const res = await fetch(`/api/citizen/check/${val}`);
+      const data = await res.json();
+      lookup.classList.add('visible');
+      if (data.exists) {
+        lookup.innerHTML = `<span class="exists">⚠ This National ID is already registered.</span>`;
+      } else {
+        lookup.innerHTML = `<span class="available">✓ National ID is available.</span>`;
+      }
+    } catch {
+      // Backend not connected yet — silent fail
+      lookup.classList.remove('visible');
+    }
+  });
+
+  // ── Validation ──
+  function validate() {
+    let valid = true;
+
+    const fields = [
+      { id: 'nationalId', errorId: 'nationalIdError', msg: 'National ID is required.' },
+      { id: 'firstName',  errorId: 'firstNameError',  msg: 'First name is required.' },
+      { id: 'lastName',   errorId: 'lastNameError',   msg: 'Last name is required.' },
+      { id: 'gender',     errorId: 'genderError',     msg: 'Please select a gender.' },
+      { id: 'countryCode',errorId: 'countryError',    msg: 'Please select a country.' },
+      { id: 'address',    errorId: 'addressError',    msg: 'Address is required.' },
+    ];
+
+    fields.forEach(f => {
+      const el = document.getElementById(f.id);
+      const err = document.getElementById(f.errorId);
+      if (!el.value.trim()) {
+        el.classList.add('error');
+        err.classList.add('visible');
+        valid = false;
+      } else {
+        el.classList.remove('error');
+        err.classList.remove('visible');
+      }
+    });
+
+    // DOB check
+    const dob = document.getElementById('dob');
+    const dobErr = document.getElementById('dobError');
+    if (!dob.value || new Date(dob.value) > new Date()) {
+      dob.classList.add('error');
+      dobErr.textContent = dob.value ? 'Date of birth cannot be in the future.' : 'Date of birth is required.';
+      dobErr.classList.add('visible');
+      valid = false;
+    } else {
+      dob.classList.remove('error');
+      dobErr.classList.remove('visible');
+    }
+
+    // Email check
+    const email = document.getElementById('email');
+    const emailErr = document.getElementById('emailError');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.value.trim() || !emailRegex.test(email.value)) {
+      email.classList.add('error');
+      emailErr.classList.add('visible');
+      valid = false;
+    } else {
+      email.classList.remove('error');
+      emailErr.classList.remove('visible');
+    }
+
+    return valid;
+  }
+
+  // ── Submit ──
+  async function submitForm() {
+    if (!validate()) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Registering...';
+
+    const payload = {
+      nationalIdNo:  document.getElementById('nationalId').value.trim(),
+      firstName:     document.getElementById('firstName').value.trim(),
+      lastName:      document.getElementById('lastName').value.trim(),
+      otherName:     document.getElementById('otherName').value.trim(),
+      dob:           document.getElementById('dob').value,
+      gender:        document.getElementById('gender').value,
+      countryCode:   document.getElementById('countryCode').value,
+      email:         document.getElementById('email').value.trim(),
+      address:       document.getElementById('address').value.trim(),
+    };
+
+    try {
+      const res = await fetch('/api/citizen/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast('✓ Citizen registered successfully.', 'success');
+        resetForm();
+      } else {
+        showToast(`✗ ${data.message || 'Registration failed.'}`, 'error-toast');
+      }
+    } catch {
+      showToast('✗ Could not connect to server.', 'error-toast');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Register Citizen';
+    }
+  }
+
+  // ── Reset ──
+  function resetForm() {
+    document.getElementById('citizenForm').reset();
+    document.querySelectorAll('.field-error').forEach(e => e.classList.remove('visible'));
+    document.querySelectorAll('input, select').forEach(e => e.classList.remove('error'));
+    document.getElementById('idLookup').classList.remove('visible');
+  }
+
+  // ── Toast ──
+  function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `toast ${type} show`;
+    setTimeout(() => toast.classList.remove('show'), 3500);
+  }
+</script>
+
+</body>
+</html>
