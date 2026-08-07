@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Visa Processing - NPIMS</title>
+  <style>
+    :root{--navy:#0D1F3C;--navy-mid:#162D54;--blue:#1A4A8A;--blue-light:#2E6BC4;--gold:#C9A84C;--white:#FFFFFF;--off-white:#F4F6FA;--grey-light:#E2E8F2;--grey:#8A97A8;--text:#1A2535;--error:#C0392B;--success:#1A7A4A;--warning:#B7770D;--radius:4px;--shadow:0 2px 12px rgba(13,31,60,0.10);}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--off-white);color:var(--text);min-height:100vh;}
+    header{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:64px;}
+    .header-left{display:flex;align-items:center;gap:14px;}
+    .crest{width:40px;height:40px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;}
+    .header-title{color:var(--white);font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+    .header-subtitle{color:var(--grey);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+    nav{display:flex;gap:4px;}
+    nav a{color:var(--grey);text-decoration:none;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border-radius:var(--radius);transition:color .2s,background .2s;}
+    nav a:hover{color:var(--white);background:var(--navy-mid);}
+    nav a.active{color:var(--gold);border-bottom:2px solid var(--gold);}
+    .role-bar{background:var(--navy-mid);border-bottom:1px solid rgba(201,168,76,.15);padding:10px 40px;display:flex;align-items:center;justify-content:space-between;}
+    .role-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);}
+    .role-switcher{display:flex;gap:8px;}
+    .role-btn{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.05em;cursor:pointer;border:1px solid var(--grey);background:transparent;color:var(--grey);transition:all .2s;text-transform:uppercase;}
+    .role-btn.active{background:var(--blue);border-color:var(--blue);color:var(--white);}
+    .role-note{font-size:11px;color:var(--grey);font-style:italic;}
+    .page-header{background:var(--navy-mid);padding:24px 40px;border-bottom:1px solid rgba(201,168,76,.2);}
+    .breadcrumb{font-size:11px;color:var(--grey);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+    .breadcrumb span{color:var(--gold);}
+    .page-title{color:var(--white);font-size:22px;font-weight:700;}
+    .page-desc{color:var(--grey);font-size:13px;margin-top:4px;}
+    #citizenView,#officerView{display:none;}
+    #citizenView.active,#officerView.active{display:block;}
+    main{max-width:960px;margin:32px auto;padding:0 24px;}
+    .card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
+    .card-header{background:var(--navy);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+    .card-header-left{display:flex;align-items:center;gap:10px;}
+    .card-header-icon{color:var(--gold);font-size:16px;}
+    .card-header h2{color:var(--white);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .card-body{padding:28px 24px;}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px;}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    .form-group.full{grid-column:1/-1;}
+    label{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--navy);}
+    label .required{color:var(--error);margin-left:3px;}
+    input,select,textarea{border:1px solid var(--grey-light);border-radius:var(--radius);padding:0 12px;font-size:14px;color:var(--text);background:var(--white);transition:border-color .2s,box-shadow .2s;outline:none;width:100%;height:40px;font-family:inherit;}
+    textarea{height:70px;padding:10px 12px;resize:vertical;}
+    input:focus,select:focus,textarea:focus{border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(46,107,196,.12);}
+    input.error,select.error{border-color:var(--error);}
+    .field-error{font-size:11px;color:var(--error);margin-top:2px;display:none;}
+    .field-error.visible{display:block;}
+    .field-hint{font-size:11px;color:var(--grey);margin-top:2px;}
+    .section-divider{display:flex;align-items:center;gap:12px;margin:8px 0 20px;}
+    .section-divider span{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);white-space:nowrap;}
+    .section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--grey-light);}
+    .form-actions{display:flex;justify-content:flex-end;gap:12px;padding:20px 24px;background:var(--off-white);border-top:1px solid var(--grey-light);}
+    .btn{height:40px;padding:0 24px;border-radius:var(--radius);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;border:none;transition:background .2s,transform .1s;}
+    .btn:active{transform:translateY(1px);}
+    .btn-secondary{background:var(--white);border:1px solid var(--grey-light);color:var(--text);}
+    .btn-secondary:hover{background:var(--grey-light);}
+    .btn-primary{background:var(--blue);color:var(--white);}
+    .btn-primary:hover{background:var(--blue-light);}
+    .btn-primary:disabled{background:var(--grey);cursor:not-allowed;}
+    .btn-success{background:var(--success);color:var(--white);}
+    .btn-success:hover{filter:brightness(1.1);}
+    .btn-danger{background:var(--error);color:var(--white);}
+    .btn-danger:hover{filter:brightness(1.1);}
+    .btn-sm{height:32px;padding:0 14px;font-size:12px;}
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+    .badge-pending{background:rgba(183,119,13,.12);color:var(--warning);}
+    .badge-approved{background:rgba(26,122,74,.12);color:var(--success);}
+    .badge-rejected{background:rgba(192,57,43,.12);color:var(--error);}
+    .badge-expired{background:rgba(138,151,168,.15);color:var(--grey);}
+    .lookup-bar{display:flex;gap:10px;padding:20px 24px;border-bottom:1px solid var(--grey-light);background:var(--off-white);}
+    .lookup-bar input{flex:1;}
+    .search-bar{display:flex;gap:10px;padding:16px 24px;border-bottom:1px solid var(--grey-light);background:var(--off-white);flex-wrap:wrap;}
+    .search-bar input{flex:1;}
+    .search-bar select{width:180px;}
+    .table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    thead th{background:var(--off-white);color:var(--grey);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:10px 16px;text-align:left;border-bottom:1px solid var(--grey-light);}
+    tbody tr{border-bottom:1px solid var(--grey-light);transition:background .15s;}
+    tbody tr:hover{background:var(--off-white);}
+    tbody td{padding:12px 16px;}
+    .empty-row td{text-align:center;color:var(--grey);font-style:italic;padding:32px;}
+    .detail-panel{display:none;background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
+    .detail-panel.visible{display:block;}
+    .detail-header{background:var(--navy-mid);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+    .detail-header h3{color:var(--white);font-size:14px;font-weight:600;}
+    .detail-close{background:none;border:none;color:var(--grey);font-size:22px;cursor:pointer;line-height:1;}
+    .detail-close:hover{color:var(--white);}
+    .detail-body{padding:24px;}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px 24px;margin-bottom:20px;}
+    .detail-field label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);display:block;margin-bottom:4px;}
+    .detail-field span{font-size:14px;color:var(--text);font-weight:500;}
+    .detail-actions{display:flex;gap:10px;align-items:flex-start;padding-top:16px;border-top:1px solid var(--grey-light);}
+    .detail-actions textarea{flex:1;height:60px;}
+    .notice{background:rgba(26,74,138,.08);border-left:4px solid var(--blue-light);border-radius:var(--radius);padding:12px 16px;margin-bottom:24px;font-size:13px;color:var(--blue);display:flex;gap:10px;}
+    .toast{position:fixed;bottom:28px;right:28px;padding:14px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:transform .3s,opacity .3s;z-index:999;}
+    .toast.show{transform:translateY(0);opacity:1;}
+    .toast.success{background:var(--success);color:var(--white);}
+    .toast.error-toast{background:var(--error);color:var(--white);}
+    .toast.info{background:var(--blue);color:var(--white);}
+    @media(max-width:640px){header{padding:0 16px;}nav{display:none;}.role-bar,.page-header{padding:10px 16px;}main{padding:0 12px;margin:20px auto;}.form-grid{grid-template-columns:1fr;}.detail-grid{grid-template-columns:1fr 1fr;}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="crest">🏛️</div>
+    <div>
+      <div class="header-title">NPIMS</div>
+      <div class="header-subtitle">National Passport & Immigration Management</div>
+    </div>
+  </div>
+  <nav>
+    <a href="citizen.html">Citizens</a>
+    <a href="passport.html">Passports</a>
+    <a href="visa.html" class="active">Visas</a>
+    <a href="officers.html">Officers</a>
+    <a href="travel.html">Travel</a>
+    <a href="border.html">Border</a>
+    <a href="verification.html">Verification</a>
+  </nav>
+</header>
+
+<div class="role-bar">
+  <div class="role-pill" id="rolePill">👤 Citizen View</div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span class="role-note">Demo: switch role to preview each view</span>
+    <div class="role-switcher">
+      <button class="role-btn active" onclick="switchRole('citizen')">Citizen</button>
+      <button class="role-btn" onclick="switchRole('officer')">Officer</button>
+    </div>
+  </div>
+</div>
+
+<div class="page-header">
+  <div class="breadcrumb">Dashboard / <span>Visa Processing</span></div>
+  <div class="page-title" id="pageTitle">Visa Application</div>
+  <div class="page-desc" id="pageDesc">Apply for a visa and track your application status.</div>
+</div>
+
+<main>
+
+  <!-- CITIZEN VIEW -->
+  <div id="citizenView" class="active">
+
+    <div class="notice">
+      <span>ℹ️</span>
+      <div>A valid active passport is required before applying for a visa. Your passport number will be verified before submission.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">📋</span>
+          <h2>Apply for a Visa</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        <form id="visaForm" novalidate>
+          <div class="section-divider"><span>Applicant</span></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="visaNationalId">National ID <span class="required">*</span></label>
+              <input type="text" id="visaNationalId" placeholder="Your National ID"/>
+              <div class="field-error" id="visaNationalIdError">National ID is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="visaPassportNo">Passport No. <span class="required">*</span></label>
+              <input type="text" id="visaPassportNo" placeholder="Your active passport number"/>
+              <div class="field-hint">Must be active and not expired</div>
+              <div class="field-error" id="visaPassportError">Passport number is required.</div>
+            </div>
+          </div>
+
+          <div class="section-divider" style="margin-top:20px;"><span>Visa Details</span></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="visaType">Visa Type <span class="required">*</span></label>
+              <select id="visaType">
+                <option value="">— Select Type —</option>
+                <option value="Tourist">Tourist</option>
+                <option value="Student">Student</option>
+                <option value="Work">Work</option>
+                <option value="Transit">Transit</option>
+                <option value="Diplomatic">Diplomatic</option>
+              </select>
+              <div class="field-error" id="visaTypeError">Visa type is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="destinationCountry">Destination Country <span class="required">*</span></label>
+              <select id="destinationCountry">
+                <option value="">— Select Country —</option>
+                <option value="GHA">Ghana</option>
+                <option value="NGA">Nigeria</option>
+                <option value="ZAF">South Africa</option>
+                <option value="KEN">Kenya</option>
+                <option value="USA">United States</option>
+                <option value="GBR">United Kingdom</option>
+                <option value="FRA">France</option>
+                <option value="CHN">China</option>
+              </select>
+              <div class="field-error" id="destinationError">Destination country is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="numberOfEntries">Number of Entries <span class="required">*</span></label>
+              <select id="numberOfEntries">
+                <option value="">— Select —</option>
+                <option value="Single">Single</option>
+                <option value="Multiple">Multiple</option>
+              </select>
+              <div class="field-error" id="entriesError">Number of entries is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="durationOfStay">Duration of Stay (months) <span class="required">*</span></label>
+              <input type="number" id="durationOfStay" placeholder="e.g. 6" min="1" max="60"/>
+              <div class="field-error" id="durationError">Duration is required.</div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="resetVisaForm()">Clear</button>
+        <button class="btn btn-primary" id="visaSubmitBtn" onclick="submitVisaApplication()">Submit Application</button>
+      </div>
+    </div>
+
+    <!-- My visa applications -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">📁</span>
+          <h2>My Visa Applications</h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadMyVisas()">↻ Refresh</button>
+      </div>
+      <div class="lookup-bar">
+        <input type="text" id="myVisaLookupId" placeholder="Enter your National ID to load your applications..."/>
+        <button class="btn btn-primary" onclick="loadMyVisas()">Load</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Visa ID</th><th>Type</th><th>Destination</th><th>Entries</th><th>Duration</th><th>Status</th></tr>
+          </thead>
+          <tbody id="myVisaBody">
+            <tr class="empty-row"><td colspan="6">Enter your National ID above to load applications.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /citizenView -->
+
+  <!-- OFFICER VIEW -->
+  <div id="officerView">
+
+    <!-- Review detail panel -->
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-header">
+        <h3 id="detailTitle">Visa Application Review</h3>
+        <button class="detail-close" onclick="closeDetail()">×</button>
+      </div>
+      <div class="detail-body">
+        <div class="detail-grid" id="detailGrid"></div>
+        <div class="detail-actions" id="detailActions"></div>
+      </div>
+    </div>
+
+    <!-- Pending visa queue -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">⏳</span>
+          <h2>Pending Visa Applications</h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadPendingVisas()">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Application ID</th><th>National ID</th><th>Passport No.</th><th>Type</th><th>Destination</th><th>Status</th><th>Action</th></tr>
+          </thead>
+          <tbody id="pendingVisaBody">
+            <tr class="empty-row"><td colspan="7">No pending visa applications.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- All visas search -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">🔍</span>
+          <h2>All Visa Records</h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadAllVisas()">↻ Refresh</button>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="searchVisaInput" placeholder="Search by National ID, Passport No. or Visa ID..."/>
+        <select id="filterVisaStatus">
+          <option value="">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Expired">Expired</option>
+        </select>
+        <select id="filterVisaType">
+          <option value="">All Types</option>
+          <option value="Tourist">Tourist</option>
+          <option value="Student">Student</option>
+          <option value="Work">Work</option>
+          <option value="Transit">Transit</option>
+          <option value="Diplomatic">Diplomatic</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="searchVisas()">Search</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Visa ID</th><th>National ID</th><th>Passport No.</th><th>Type</th><th>Issue Date</th><th>Expiry Date</th><th>Status</th></tr>
+          </thead>
+          <tbody id="allVisaBody">
+            <tr class="empty-row"><td colspan="7">Click Refresh to load records.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /officerView -->
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function switchRole(role) {
+    document.querySelectorAll('.role-btn').forEach((b,i) => b.classList.toggle('active',(role==='citizen'&&i===0)||(role==='officer'&&i===1)));
+    document.getElementById('citizenView').classList.toggle('active', role==='citizen');
+    document.getElementById('officerView').classList.toggle('active', role==='officer');
+    document.getElementById('rolePill').textContent  = role==='citizen' ? '👤 Citizen View' : '🛂 Officer View';
+    document.getElementById('pageTitle').textContent = role==='citizen' ? 'Visa Application' : 'Visa Management';
+    document.getElementById('pageDesc').textContent  = role==='citizen'
+      ? 'Apply for a visa and track your application status.'
+      : 'Review visa applications and manage all visa records.';
+    if (role==='officer') { loadPendingVisas(); loadAllVisas(); }
+  }
+
+  function validateVisa() {
+    let valid = true;
+    [['visaNationalId','visaNationalIdError'],['visaPassportNo','visaPassportError'],
+     ['visaType','visaTypeError'],['destinationCountry','destinationError'],
+     ['numberOfEntries','entriesError'],['durationOfStay','durationError']
+    ].forEach(([id,errId]) => {
+      const el=document.getElementById(id), err=document.getElementById(errId);
+      if (!el.value.toString().trim()) { el.classList.add('error'); err.classList.add('visible'); valid=false; }
+      else { el.classList.remove('error'); err.classList.remove('visible'); }
+    });
+    const dur = parseInt(document.getElementById('durationOfStay').value);
+    if (dur < 1 || dur > 60) {
+      document.getElementById('durationOfStay').classList.add('error');
+      document.getElementById('durationError').textContent = 'Duration must be between 1 and 60 months.';
+      document.getElementById('durationError').classList.add('visible');
+      valid = false;
+    }
+    return valid;
+  }
+
+  async function submitVisaApplication() {
+    if (!validateVisa()) return;
+    const btn = document.getElementById('visaSubmitBtn');
+    btn.disabled=true; btn.textContent='Submitting...';
+    const payload = {
+      nationalIdNo:      document.getElementById('visaNationalId').value.trim(),
+      passportNo:        document.getElementById('visaPassportNo').value.trim(),
+      visaType:          document.getElementById('visaType').value,
+      destinationCountry:document.getElementById('destinationCountry').value,
+      numberOfEntries:   document.getElementById('numberOfEntries').value,
+      durationOfStay:    parseInt(document.getElementById('durationOfStay').value),
+    };
+    try {
+      const res = await fetch('/api/visa/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      const data = await res.json();
+      if (res.ok) { showToast('✓ Visa application submitted.', 'success'); resetVisaForm(); loadMyVisas(); }
+      else { showToast(`✗ ${data.message||'Submission failed.'}`, 'error-toast'); }
+    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+    finally { btn.disabled=false; btn.textContent='Submit Application'; }
+  }
+
+  async function loadMyVisas() {
+    const id = document.getElementById('myVisaLookupId').value.trim()
+            || document.getElementById('visaNationalId').value.trim();
+    if (!id) { showToast('Enter your National ID.', 'info'); return; }
+    try {
+      const res = await fetch(`/api/visa/citizen/${id}`);
+      const data = await res.json();
+      const tbody = document.getElementById('myVisaBody');
+      if (!data.length) { tbody.innerHTML=`<tr class="empty-row"><td colspan="6">No visa applications found.</td></tr>`; return; }
+      tbody.innerHTML = data.map(v=>`
+        <tr>
+          <td><strong>${v.visaID}</strong></td>
+          <td>${v.visaType}</td>
+          <td>${v.destinationCountry || '—'}</td>
+          <td>${v.numberOfEntries || '—'}</td>
+          <td>${v.durationOfStay ? v.durationOfStay+' mo' : '—'}</td>
+          <td><span class="badge badge-${v.visaStatus.toLowerCase()}">${v.visaStatus}</span></td>
+        </tr>`).join('');
+    } catch { showToast('✗ Could not load visa applications.', 'error-toast'); }
+  }
+
+  async function loadPendingVisas() {
+    try {
+      const res = await fetch('/api/visa/pending');
+      const data = await res.json();
+      const tbody = document.getElementById('pendingVisaBody');
+      if (!data.length) { tbody.innerHTML=`<tr class="empty-row"><td colspan="7">No pending applications.</td></tr>`; return; }
+      tbody.innerHTML = data.map(v=>`
+        <tr>
+          <td><strong>${v.applicationID}</strong></td>
+          <td>${v.nationalIdNo}</td>
+          <td>${v.passportNo || '—'}</td>
+          <td>${v.visaType}</td>
+          <td>${v.destinationCountry || '—'}</td>
+          <td><span class="badge badge-pending">Pending</span></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="reviewVisa(${JSON.stringify(v).replace(/"/g,"'")})">Review</button></td>
+        </tr>`).join('');
+    } catch { showToast('✗ Could not load pending queue.', 'error-toast'); }
+  }
+
+  async function loadAllVisas() {
+    try {
+      const res = await fetch('/api/visa/all');
+      const data = await res.json();
+      renderVisas(data);
+    } catch { showToast('✗ Could not load visa records.', 'error-toast'); }
+  }
+
+  async function searchVisas() {
+    const q      = document.getElementById('searchVisaInput').value.trim();
+    const status = document.getElementById('filterVisaStatus').value;
+    const type   = document.getElementById('filterVisaType').value;
+    const params = new URLSearchParams();
+    if (q)      params.append('q', q);
+    if (status) params.append('status', status);
+    if (type)   params.append('type', type);
+    try {
+      const res = await fetch(`/api/visa/all?${params.toString()}`);
+      renderVisas(await res.json());
+    } catch { showToast('✗ Search failed.', 'error-toast'); }
+  }
+
+  function renderVisas(data) {
+    const tbody = document.getElementById('allVisaBody');
+    if (!data.length) { tbody.innerHTML=`<tr class="empty-row"><td colspan="7">No records found.</td></tr>`; return; }
+    tbody.innerHTML = data.map(v=>`
+      <tr>
+        <td><strong>${v.visaID}</strong></td>
+        <td>${v.nationalIdNo}</td>
+        <td>${v.passportNo || '—'}</td>
+        <td>${v.visaType}</td>
+        <td>${v.issueDate || '—'}</td>
+        <td>${v.expiryDate || '—'}</td>
+        <td><span class="badge badge-${v.visaStatus.toLowerCase()}">${v.visaStatus}</span></td>
+      </tr>`).join('');
+  }
+
+  function reviewVisa(v) {
+    document.getElementById('detailTitle').textContent = `Review — ${v.applicationID}`;
+    document.getElementById('detailGrid').innerHTML = `
+      <div class="detail-field"><label>Application ID</label><span>${v.applicationID}</span></div>
+      <div class="detail-field"><label>National ID</label><span>${v.nationalIdNo}</span></div>
+      <div class="detail-field"><label>Passport No.</label><span>${v.passportNo || '—'}</span></div>
+      <div class="detail-field"><label>Visa Type</label><span>${v.visaType}</span></div>
+      <div class="detail-field"><label>Destination</label><span>${v.destinationCountry || '—'}</span></div>
+      <div class="detail-field"><label>Entries</label><span>${v.numberOfEntries || '—'}</span></div>
+      <div class="detail-field"><label>Duration</label><span>${v.durationOfStay ? v.durationOfStay+' months' : '—'}</span></div>
+      <div class="detail-field"><label>Status</label><span class="badge badge-pending">Pending</span></div>`;
+    document.getElementById('detailActions').innerHTML = `
+      <textarea id="visaRejectionReason" placeholder="Rejection reason (required if rejecting)..."></textarea>
+      <button class="btn btn-success btn-sm" onclick="processVisa('${v.applicationID}','Approved')">Approve</button>
+      <button class="btn btn-danger btn-sm"  onclick="processVisa('${v.applicationID}','Rejected')">Reject</button>`;
+    document.getElementById('detailPanel').classList.add('visible');
+    document.getElementById('detailPanel').scrollIntoView({behavior:'smooth'});
+  }
+
+  async function processVisa(applicationId, decision) {
+    const reason = document.getElementById('visaRejectionReason')?.value.trim();
+    if (decision==='Rejected' && !reason) { showToast('✗ Rejection reason is required.', 'error-toast'); return; }
+    try {
+      const res = await fetch('/api/visa/process', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ applicationId, decision, reason: reason || null })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(decision==='Approved' ? '✓ Visa approved.' : '✓ Visa rejected.', 'success');
+        closeDetail(); loadPendingVisas(); loadAllVisas();
+      } else { showToast(`✗ ${data.message||'Action failed.'}`, 'error-toast'); }
+    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+  }
+
+  function closeDetail() { document.getElementById('detailPanel').classList.remove('visible'); }
+
+  function resetVisaForm() {
+    document.getElementById('visaForm').reset();
+    document.querySelectorAll('.field-error').forEach(e=>e.classList.remove('visible'));
+    document.querySelectorAll('input,select').forEach(e=>e.classList.remove('error'));
+  }
+
+  function showToast(msg,type) {
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.className=`toast ${type} show`;
+    setTimeout(()=>t.classList.remove('show'),3500);
+  }
+</script>
+</body>
+</html>

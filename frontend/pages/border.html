@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Border Posts - NPIMS</title>
+  <style>
+    :root{--navy:#0D1F3C;--navy-mid:#162D54;--blue:#1A4A8A;--blue-light:#2E6BC4;--gold:#C9A84C;--white:#FFFFFF;--off-white:#F4F6FA;--grey-light:#E2E8F2;--grey:#8A97A8;--text:#1A2535;--error:#C0392B;--success:#1A7A4A;--warning:#B7770D;--radius:4px;--shadow:0 2px 12px rgba(13,31,60,0.10);}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--off-white);color:var(--text);min-height:100vh;}
+    header{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:64px;}
+    .header-left{display:flex;align-items:center;gap:14px;}
+    .crest{width:40px;height:40px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;}
+    .header-title{color:var(--white);font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+    .header-subtitle{color:var(--grey);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+    nav{display:flex;gap:4px;}
+    nav a{color:var(--grey);text-decoration:none;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border-radius:var(--radius);transition:color .2s,background .2s;}
+    nav a:hover{color:var(--white);background:var(--navy-mid);}
+    nav a.active{color:var(--gold);border-bottom:2px solid var(--gold);}
+    .page-header{background:var(--navy-mid);padding:24px 40px;border-bottom:1px solid rgba(201,168,76,.2);}
+    .breadcrumb{font-size:11px;color:var(--grey);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+    .breadcrumb span{color:var(--gold);}
+    .page-title{color:var(--white);font-size:22px;font-weight:700;}
+    .page-desc{color:var(--grey);font-size:13px;margin-top:4px;}
+    main{max-width:960px;margin:32px auto;padding:0 24px;}
+    .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+    .stat-card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);}
+    .stat-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);margin-bottom:6px;}
+    .stat-value{font-size:26px;font-weight:700;color:var(--navy);}
+    .stat-sub{font-size:11px;color:var(--grey);margin-top:4px;}
+    .card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
+    .card-header{background:var(--navy);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+    .card-header-left{display:flex;align-items:center;gap:10px;}
+    .card-header-icon{color:var(--gold);font-size:16px;}
+    .card-header h2{color:var(--white);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .card-body{padding:28px 24px;}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px;}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    .form-group.full{grid-column:1/-1;}
+    label{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--navy);}
+    label .required{color:var(--error);margin-left:3px;}
+    input,select{border:1px solid var(--grey-light);border-radius:var(--radius);padding:0 12px;font-size:14px;color:var(--text);background:var(--white);transition:border-color .2s,box-shadow .2s;outline:none;width:100%;height:40px;font-family:inherit;}
+    input:focus,select:focus{border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(46,107,196,.12);}
+    input.error,select.error{border-color:var(--error);}
+    .field-error{font-size:11px;color:var(--error);margin-top:2px;display:none;}
+    .field-error.visible{display:block;}
+    .section-divider{display:flex;align-items:center;gap:12px;margin:8px 0 20px;}
+    .section-divider span{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);white-space:nowrap;}
+    .section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--grey-light);}
+    .form-actions{display:flex;justify-content:flex-end;gap:12px;padding:20px 24px;background:var(--off-white);border-top:1px solid var(--grey-light);}
+    .btn{height:40px;padding:0 24px;border-radius:var(--radius);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;border:none;transition:background .2s,transform .1s;}
+    .btn:active{transform:translateY(1px);}
+    .btn-secondary{background:var(--white);border:1px solid var(--grey-light);color:var(--text);}
+    .btn-secondary:hover{background:var(--grey-light);}
+    .btn-primary{background:var(--blue);color:var(--white);}
+    .btn-primary:hover{background:var(--blue-light);}
+    .btn-primary:disabled{background:var(--grey);cursor:not-allowed;}
+    .btn-sm{height:32px;padding:0 14px;font-size:12px;}
+    .filter-bar{display:flex;gap:10px;padding:16px 24px;border-bottom:1px solid var(--grey-light);background:var(--off-white);flex-wrap:wrap;}
+    .filter-bar select{width:180px;}
+    .table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    thead th{background:var(--off-white);color:var(--grey);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:10px 16px;text-align:left;border-bottom:1px solid var(--grey-light);}
+    tbody tr{border-bottom:1px solid var(--grey-light);transition:background .15s;}
+    tbody tr:hover{background:var(--off-white);}
+    tbody td{padding:12px 16px;}
+    .empty-row td{text-align:center;color:var(--grey);font-style:italic;padding:32px;}
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+    .badge-airport{background:rgba(26,74,138,.12);color:var(--blue);}
+    .badge-land{background:rgba(183,119,13,.12);color:var(--warning);}
+    .badge-sea{background:rgba(13,31,60,.12);color:var(--navy);}
+    /* Post cards grid */
+    .posts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:24px;}
+    .post-card{border:1px solid var(--grey-light);border-radius:var(--radius);overflow:hidden;transition:box-shadow .2s;}
+    .post-card:hover{box-shadow:var(--shadow);}
+    .post-card-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
+    .post-card-header.airport{background:rgba(26,74,138,.08);}
+    .post-card-header.land{background:rgba(183,119,13,.08);}
+    .post-card-header.sea{background:rgba(13,31,60,.06);}
+    .post-card-title{font-size:14px;font-weight:600;color:var(--navy);}
+    .post-card-id{font-size:11px;color:var(--grey);margin-top:2px;}
+    .post-card-body{padding:14px 16px;}
+    .post-stat{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--grey-light);}
+    .post-stat:last-child{border-bottom:none;}
+    .post-stat-label{color:var(--grey);}
+    .post-stat-value{font-weight:600;color:var(--text);}
+    .post-card-footer{padding:10px 16px;background:var(--off-white);border-top:1px solid var(--grey-light);}
+    .officers-list{font-size:12px;color:var(--grey);}
+    .officer-chip{display:inline-block;background:var(--white);border:1px solid var(--grey-light);border-radius:20px;padding:2px 10px;font-size:11px;margin:2px;}
+    .toast{position:fixed;bottom:28px;right:28px;padding:14px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:transform .3s,opacity .3s;z-index:999;}
+    .toast.show{transform:translateY(0);opacity:1;}
+    .toast.success{background:var(--success);color:var(--white);}
+    .toast.error-toast{background:var(--error);color:var(--white);}
+    @media(max-width:640px){header{padding:0 16px;}nav{display:none;}.page-header{padding:20px 16px;}main{padding:0 12px;margin:20px auto;}.form-grid{grid-template-columns:1fr;}.stats-bar{grid-template-columns:1fr 1fr;}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="crest">🏛️</div>
+    <div>
+      <div class="header-title">NPIMS</div>
+      <div class="header-subtitle">National Passport & Immigration Management</div>
+    </div>
+  </div>
+  <nav>
+    <a href="citizen.html">Citizens</a>
+    <a href="passport.html">Passports</a>
+    <a href="visa.html">Visas</a>
+    <a href="officers.html">Officers</a>
+    <a href="travel.html">Travel</a>
+    <a href="border.html" class="active">Border</a>
+    <a href="verification.html">Verification</a>
+  </nav>
+</header>
+
+<div class="page-header">
+  <div class="breadcrumb">Dashboard / <span>Border Posts</span></div>
+  <div class="page-title">Border Posts</div>
+  <div class="page-desc">View all border posts, officer deployments, and crossing activity.</div>
+</div>
+
+<main>
+
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">Total Posts</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">System-wide</div></div>
+    <div class="stat-card"><div class="stat-label">Airports</div><div class="stat-value" id="statAirport">—</div><div class="stat-sub">Air border posts</div></div>
+    <div class="stat-card"><div class="stat-label">Land Borders</div><div class="stat-value" id="statLand">—</div><div class="stat-sub">Land crossings</div></div>
+    <div class="stat-card"><div class="stat-label">Sea Ports</div><div class="stat-value" id="statSea">—</div><div class="stat-sub">Port entries</div></div>
+  </div>
+
+  <!-- Register border post -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <span class="card-header-icon">➕</span>
+        <h2>Register New Border Post</h2>
+      </div>
+    </div>
+    <div class="card-body">
+      <form id="borderForm" novalidate>
+        <div class="section-divider"><span>Post Details</span></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="borderPostID">Border Post ID <span class="required">*</span></label>
+            <input type="text" id="borderPostID" placeholder="e.g. GHA0005" maxlength="7"/>
+            <div class="field-error" id="borderPostIDError">Border Post ID is required.</div>
+          </div>
+          <div class="form-group">
+            <label for="borderPostName">Post Name <span class="required">*</span></label>
+            <input type="text" id="borderPostName" placeholder="e.g. Accra Land Border"/>
+            <div class="field-error" id="borderPostNameError">Post name is required.</div>
+          </div>
+          <div class="form-group">
+            <label for="borderCountry">Country <span class="required">*</span></label>
+            <select id="borderCountry">
+              <option value="">— Select Country —</option>
+              <option value="GHA">Ghana</option>
+              <option value="NGA">Nigeria</option>
+              <option value="ZAF">South Africa</option>
+              <option value="KEN">Kenya</option>
+              <option value="USA">United States</option>
+              <option value="GBR">United Kingdom</option>
+            </select>
+            <div class="field-error" id="borderCountryError">Country is required.</div>
+          </div>
+          <div class="form-group">
+            <label for="borderType">Border Type <span class="required">*</span></label>
+            <select id="borderType">
+              <option value="">— Select Type —</option>
+              <option value="Airport">Airport</option>
+              <option value="Land">Land</option>
+              <option value="Sea">Sea</option>
+            </select>
+            <div class="field-error" id="borderTypeError">Border type is required.</div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="resetBorderForm()">Clear</button>
+      <button class="btn btn-primary" id="borderSubmitBtn" onclick="registerBorderPost()">Register Border Post</button>
+    </div>
+  </div>
+
+  <!-- Border post cards -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <span class="card-header-icon">🗺️</span>
+        <h2>All Border Posts & Deployments</h2>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadBorderPosts()">↻ Refresh</button>
+    </div>
+    <div class="filter-bar">
+      <select id="filterType" onchange="loadBorderPosts()">
+        <option value="">All Types</option>
+        <option value="Airport">Airport</option>
+        <option value="Land">Land</option>
+        <option value="Sea">Sea</option>
+      </select>
+      <select id="filterCountry" onchange="loadBorderPosts()">
+        <option value="">All Countries</option>
+        <option value="GHA">Ghana</option>
+        <option value="NGA">Nigeria</option>
+        <option value="ZAF">South Africa</option>
+        <option value="KEN">Kenya</option>
+      </select>
+    </div>
+    <div class="posts-grid" id="postsGrid">
+      <p style="color:var(--grey);font-style:italic;padding:8px;">Click Refresh to load border posts.</p>
+    </div>
+  </div>
+
+  <!-- Officer deployment table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <span class="card-header-icon">👮</span>
+        <h2>Officer Deployments</h2>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadDeployments()">↻ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Officer ID</th><th>Name</th><th>Border Post</th><th>Type</th><th>Country</th></tr>
+        </thead>
+        <tbody id="deploymentBody">
+          <tr class="empty-row"><td colspan="5">Click Refresh to load deployments.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const typeIcon = { Airport:'✈️', Land:'🛣️', Sea:'⚓' };
+
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/border/stats');
+      const d = await res.json();
+      document.getElementById('statTotal').textContent   = d.total   ?? '—';
+      document.getElementById('statAirport').textContent = d.airport ?? '—';
+      document.getElementById('statLand').textContent    = d.land    ?? '—';
+      document.getElementById('statSea').textContent     = d.sea     ?? '—';
+    } catch {}
+  }
+
+  async function loadBorderPosts() {
+    const type    = document.getElementById('filterType').value;
+    const country = document.getElementById('filterCountry').value;
+    const params  = new URLSearchParams();
+    if (type)    params.append('type', type);
+    if (country) params.append('country', country);
+    try {
+      const res  = await fetch(`/api/border/posts?${params.toString()}`);
+      const data = await res.json();
+      const grid = document.getElementById('postsGrid');
+      if (!data.length) { grid.innerHTML = `<p style="color:var(--grey);font-style:italic;padding:8px;">No border posts found.</p>`; return; }
+      grid.innerHTML = data.map(p => `
+        <div class="post-card">
+          <div class="post-card-header ${p.borderType.toLowerCase()}">
+            <div>
+              <div class="post-card-title">${typeIcon[p.borderType] || '📍'} ${p.borderPostName}</div>
+              <div class="post-card-id">${p.borderPostID}</div>
+            </div>
+            <span class="badge badge-${p.borderType.toLowerCase()}">${p.borderType}</span>
+          </div>
+          <div class="post-card-body">
+            <div class="post-stat"><span class="post-stat-label">Country</span><span class="post-stat-value">${p.countryCode}</span></div>
+            <div class="post-stat"><span class="post-stat-label">Officers Deployed</span><span class="post-stat-value">${p.officerCount ?? 0}</span></div>
+            <div class="post-stat"><span class="post-stat-label">Total Crossings</span><span class="post-stat-value">${p.crossingCount ?? 0}</span></div>
+          </div>
+          <div class="post-card-footer">
+            <div class="officers-list">
+              ${p.officers && p.officers.length
+                ? p.officers.map(o => `<span class="officer-chip">👮 ${o}</span>`).join('')
+                : '<span style="color:var(--grey);font-style:italic;">No officers assigned</span>'}
+            </div>
+          </div>
+        </div>`).join('');
+    } catch { showToast('✗ Could not load border posts.', 'error-toast'); }
+  }
+
+  async function loadDeployments() {
+    try {
+      const res  = await fetch('/api/border/deployments');
+      const data = await res.json();
+      const tbody = document.getElementById('deploymentBody');
+      if (!data.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No deployments found.</td></tr>`; return; }
+      tbody.innerHTML = data.map(d => `
+        <tr>
+          <td><strong>${d.officerID}</strong></td>
+          <td>${d.officerFirstName} ${d.officerLastName}</td>
+          <td>${d.borderPostName}</td>
+          <td><span class="badge badge-${d.borderType.toLowerCase()}">${d.borderType}</span></td>
+          <td>${d.countryCode}</td>
+        </tr>`).join('');
+    } catch { showToast('✗ Could not load deployments.', 'error-toast'); }
+  }
+
+  function validateBorder() {
+    let valid = true;
+    [['borderPostID','borderPostIDError'],['borderPostName','borderPostNameError'],
+     ['borderCountry','borderCountryError'],['borderType','borderTypeError']
+    ].forEach(([id, errId]) => {
+      const el = document.getElementById(id), err = document.getElementById(errId);
+      if (!el.value.trim()) { el.classList.add('error'); err.classList.add('visible'); valid = false; }
+      else { el.classList.remove('error'); err.classList.remove('visible'); }
+    });
+    return valid;
+  }
+
+  async function registerBorderPost() {
+    if (!validateBorder()) return;
+    const btn = document.getElementById('borderSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Registering...';
+    const payload = {
+      borderPostID:   document.getElementById('borderPostID').value.trim(),
+      borderPostName: document.getElementById('borderPostName').value.trim(),
+      countryCode:    document.getElementById('borderCountry').value,
+      borderType:     document.getElementById('borderType').value,
+    };
+    try {
+      const res = await fetch('/api/border/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (res.ok) { showToast('✓ Border post registered.', 'success'); resetBorderForm(); loadBorderPosts(); loadStats(); }
+      else { showToast(`✗ ${data.message || 'Failed.'}`, 'error-toast'); }
+    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+    finally { btn.disabled = false; btn.textContent = 'Register Border Post'; }
+  }
+
+  function resetBorderForm() {
+    document.getElementById('borderForm').reset();
+    document.querySelectorAll('.field-error').forEach(e => e.classList.remove('visible'));
+    document.querySelectorAll('input,select').forEach(e => e.classList.remove('error'));
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  loadStats(); loadBorderPosts(); loadDeployments();
+</script>
+</body>
+</html>

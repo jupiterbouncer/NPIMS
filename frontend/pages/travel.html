@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Travel History | NPIMS</title>
+  <style>
+    :root {
+      --navy:#0D1F3C;--navy-mid:#162D54;--blue:#1A4A8A;--blue-light:#2E6BC4;
+      --gold:#C9A84C;--white:#FFFFFF;--off-white:#F4F6FA;--grey-light:#E2E8F2;
+      --grey:#8A97A8;--text:#1A2535;--error:#C0392B;--success:#1A7A4A;
+      --warning:#B7770D;--radius:4px;--shadow:0 2px 12px rgba(13,31,60,0.10);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--off-white);color:var(--text);min-height:100vh;}
+    header{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:64px;}
+    .header-left{display:flex;align-items:center;gap:14px;}
+    .crest{width:40px;height:40px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;}
+    .header-title{color:var(--white);font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+    .header-subtitle{color:var(--grey);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+    nav{display:flex;gap:4px;}
+    nav a{color:var(--grey);text-decoration:none;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border-radius:var(--radius);transition:color .2s,background .2s;}
+    nav a:hover{color:var(--white);background:var(--navy-mid);}
+    nav a.active{color:var(--gold);border-bottom:2px solid var(--gold);}
+    .role-bar{background:var(--navy-mid);border-bottom:1px solid rgba(201,168,76,.15);padding:10px 40px;display:flex;align-items:center;justify-content:space-between;}
+    .role-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);}
+    .role-switcher{display:flex;gap:8px;}
+    .role-btn{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.05em;cursor:pointer;border:1px solid var(--grey);background:transparent;color:var(--grey);transition:all .2s;text-transform:uppercase;}
+    .role-btn.active{background:var(--blue);border-color:var(--blue);color:var(--white);}
+    .role-note{font-size:11px;color:var(--grey);font-style:italic;}
+    .page-header{background:var(--navy-mid);padding:24px 40px;border-bottom:1px solid rgba(201,168,76,.2);}
+    .breadcrumb{font-size:11px;color:var(--grey);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+    .breadcrumb span{color:var(--gold);}
+    .page-title{color:var(--white);font-size:22px;font-weight:700;}
+    .page-desc{color:var(--grey);font-size:13px;margin-top:4px;}
+    #citizenView,#officerView{display:none;}
+    #citizenView.active,#officerView.active{display:block;}
+    main{max-width:960px;margin:32px auto;padding:0 24px;}
+    .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+    .stat-card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);}
+    .stat-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);margin-bottom:6px;}
+    .stat-value{font-size:26px;font-weight:700;color:var(--navy);}
+    .stat-sub{font-size:11px;color:var(--grey);margin-top:4px;}
+    .card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
+    .card-header{background:var(--navy);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+    .card-header-left{display:flex;align-items:center;gap:10px;}
+    .card-header-icon{color:var(--gold);font-size:16px;}
+    .card-header h2{color:var(--white);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .card-body{padding:28px 24px;}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px;}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    .form-group.full{grid-column:1/-1;}
+    label{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--navy);}
+    label .required{color:var(--error);margin-left:3px;}
+    input,select{border:1px solid var(--grey-light);border-radius:var(--radius);padding:0 12px;font-size:14px;color:var(--text);background:var(--white);transition:border-color .2s,box-shadow .2s;outline:none;width:100%;height:40px;font-family:inherit;}
+    input:focus,select:focus{border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(46,107,196,.12);}
+    input.error,select.error{border-color:var(--error);}
+    .field-error{font-size:11px;color:var(--error);margin-top:2px;display:none;}
+    .field-error.visible{display:block;}
+    .field-hint{font-size:11px;color:var(--grey);margin-top:2px;}
+    .section-divider{display:flex;align-items:center;gap:12px;margin:8px 0 20px;}
+    .section-divider span{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);white-space:nowrap;}
+    .section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--grey-light);}
+    .form-actions{display:flex;justify-content:flex-end;gap:12px;padding:20px 24px;background:var(--off-white);border-top:1px solid var(--grey-light);}
+    .btn{height:40px;padding:0 24px;border-radius:var(--radius);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;border:none;transition:background .2s,transform .1s;}
+    .btn:active{transform:translateY(1px);}
+    .btn-secondary{background:var(--white);border:1px solid var(--grey-light);color:var(--text);}
+    .btn-secondary:hover{background:var(--grey-light);}
+    .btn-primary{background:var(--blue);color:var(--white);}
+    .btn-primary:hover{background:var(--blue-light);}
+    .btn-primary:disabled{background:var(--grey);cursor:not-allowed;}
+    .btn-sm{height:32px;padding:0 14px;font-size:12px;}
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+    .badge-entry{background:rgba(26,122,74,.12);color:var(--success);}
+    .badge-exit{background:rgba(192,57,43,.12);color:var(--error);}
+    .badge-air{background:rgba(26,74,138,.12);color:var(--blue);}
+    .badge-land{background:rgba(183,119,13,.12);color:var(--warning);}
+    .badge-sea{background:rgba(13,31,60,.12);color:var(--navy);}
+    .filter-bar{display:flex;gap:10px;padding:20px 24px;border-bottom:1px solid var(--grey-light);background:var(--off-white);flex-wrap:wrap;}
+    .filter-bar input{flex:1;min-width:180px;}
+    .filter-bar select{width:150px;}
+    .filter-bar input[type="date"]{width:160px;flex:none;}
+    .table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    thead th{background:var(--off-white);color:var(--grey);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:10px 16px;text-align:left;border-bottom:1px solid var(--grey-light);}
+    tbody tr{border-bottom:1px solid var(--grey-light);transition:background .15s;}
+    tbody tr:hover{background:var(--off-white);}
+    tbody td{padding:12px 16px;}
+    .empty-row td{text-align:center;color:var(--grey);font-style:italic;padding:32px;}
+    .timeline{padding:8px 24px 24px;}
+    .timeline-item{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--grey-light);}
+    .timeline-item:last-child{border-bottom:none;}
+    .timeline-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+    .timeline-icon.entry{background:rgba(26,122,74,.10);}
+    .timeline-icon.exit{background:rgba(192,57,43,.10);}
+    .timeline-content{flex:1;}
+    .timeline-title{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:4px;}
+    .timeline-meta{font-size:12px;color:var(--grey);display:flex;gap:16px;flex-wrap:wrap;}
+    .timeline-date{font-size:12px;color:var(--grey);white-space:nowrap;}
+    .lookup-bar{display:flex;gap:10px;padding:20px 24px;border-bottom:1px solid var(--grey-light);background:var(--off-white);}
+    .lookup-bar input{flex:1;}
+    .verify-result{display:none;margin-top:8px;padding:10px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;}
+    .verify-result.valid{background:rgba(26,122,74,.08);color:var(--success);border-left:3px solid var(--success);display:block;}
+    .verify-result.invalid{background:rgba(192,57,43,.08);color:var(--error);border-left:3px solid var(--error);display:block;}
+    .toast{position:fixed;bottom:28px;right:28px;padding:14px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:transform .3s,opacity .3s;z-index:999;}
+    .toast.show{transform:translateY(0);opacity:1;}
+    .toast.success{background:var(--success);color:var(--white);}
+    .toast.error-toast{background:var(--error);color:var(--white);}
+    .toast.info{background:var(--blue);color:var(--white);}
+    @media(max-width:640px){header{padding:0 16px;}nav{display:none;}.role-bar,.page-header{padding:10px 16px;}main{padding:0 12px;margin:20px auto;}.form-grid{grid-template-columns:1fr;}.stats-bar{grid-template-columns:1fr 1fr;}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="crest">🏛️</div>
+    <div>
+      <div class="header-title">NPIMS</div>
+      <div class="header-subtitle">National Passport & Immigration Management</div>
+    </div>
+  </div>
+  <nav>
+    <a href="citizen.html">Citizens</a>
+    <a href="passport.html">Passports</a>
+    <a href="visa.html">Visas</a>
+    <a href="officers.html">Officers</a>
+    <a href="travel.html" class="active">Travel</a>
+    <a href="border.html">Border</a>
+    <a href="verification.html">Verification</a>
+  </nav>
+</header>
+
+<div class="role-bar">
+  <div class="role-pill" id="rolePill">👤 Citizen View</div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span class="role-note">Demo: switch role to preview each view</span>
+    <div class="role-switcher">
+      <button class="role-btn active" onclick="switchRole('citizen')">Citizen</button>
+      <button class="role-btn" onclick="switchRole('officer')">Officer</button>
+    </div>
+  </div>
+</div>
+
+<div class="page-header">
+  <div class="breadcrumb">Dashboard / <span>Travel History</span></div>
+  <div class="page-title" id="pageTitle">My Travel History</div>
+  <div class="page-desc" id="pageDesc">View your personal entry and exit travel records.</div>
+</div>
+
+<main>
+
+  <!-- CITIZEN VIEW -->
+  <div id="citizenView" class="active">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">🔍</span>
+          <h2>Look Up Your Records</h2>
+        </div>
+      </div>
+      <div class="lookup-bar">
+        <input type="text" id="citizenLookupId" placeholder="Enter your National ID..." />
+        <button class="btn btn-primary" onclick="loadCitizenTravel()">Load My Travel History</button>
+      </div>
+    </div>
+
+    <div class="card" id="citizenTimelineCard" style="display:none;">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">🗺️</span>
+          <h2>Travel Timeline</h2>
+        </div>
+        <span id="citizenTravelCount" style="color:var(--grey);font-size:12px;"></span>
+      </div>
+      <div class="timeline" id="citizenTimeline"></div>
+    </div>
+  </div>
+
+  <!-- OFFICER VIEW -->
+  <div id="officerView">
+
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-label">Total Records</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">All time</div></div>
+      <div class="stat-card"><div class="stat-label">Today's Entries</div><div class="stat-value" id="statEntries">—</div><div class="stat-sub">Inbound</div></div>
+      <div class="stat-card"><div class="stat-label">Today's Exits</div><div class="stat-value" id="statExits">—</div><div class="stat-sub">Outbound</div></div>
+      <div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value" id="statMonth">—</div><div class="stat-sub">Total crossings</div></div>
+    </div>
+
+    <!-- Log border entry -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">✈️</span>
+          <h2>Log Border Entry / Exit</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        <form id="travelForm" novalidate>
+          <div class="section-divider"><span>Traveller</span></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="travelNationalId">National ID <span class="required">*</span></label>
+              <input type="text" id="travelNationalId" placeholder="Citizen's National ID" onblur="verifyPassport()" />
+              <div class="field-error" id="travelNationalIdError">National ID is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="travelPassportNo">Passport No. <span class="required">*</span></label>
+              <input type="text" id="travelPassportNo" placeholder="Passport number" onblur="verifyPassport()" />
+              <div class="verify-result" id="verifyResult"></div>
+              <div class="field-error" id="travelPassportError">Passport number is required.</div>
+            </div>
+          </div>
+
+          <div class="section-divider" style="margin-top:20px;"><span>Journey Details</span></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="entryOrExit">Entry / Exit <span class="required">*</span></label>
+              <select id="entryOrExit">
+                <option value="">— Select —</option>
+                <option value="entry">Entry</option>
+                <option value="exit">Exit</option>
+              </select>
+              <div class="field-error" id="entryOrExitError">Please select entry or exit.</div>
+            </div>
+            <div class="form-group">
+              <label for="modeOfTravel">Mode of Travel <span class="required">*</span></label>
+              <select id="modeOfTravel">
+                <option value="">— Select —</option>
+                <option value="air">Air</option>
+                <option value="land">Land</option>
+                <option value="sea">Sea</option>
+              </select>
+              <div class="field-error" id="modeError">Mode of travel is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="departureCountry">Departure Country <span class="required">*</span></label>
+              <select id="departureCountry">
+                <option value="">— Select Country —</option>
+                <option value="AF">Afghanistan</option>
+                <option value="AL">Albania</option>
+                <option value="DZ">Algeria</option>
+                <option value="AD">Andorra</option>
+                <option value="AO">Angola</option>
+                <option value="AG">Antigua and Barbuda</option>
+                <option value="AR">Argentina</option>
+                <option value="AM">Armenia</option>
+                <option value="AU">Australia</option>
+                <option value="AT">Austria</option>
+                <option value="AZ">Azerbaijan</option>
+                <option value="BS">Bahamas</option>
+                <option value="BH">Bahrain</option>
+                <option value="BD">Bangladesh</option>
+                <option value="BB">Barbados</option>
+                <option value="BY">Belarus</option>
+                <option value="BE">Belgium</option>
+                <option value="BZ">Belize</option>
+                <option value="BJ">Benin</option>
+                <option value="BT">Bhutan</option>
+                <option value="BO">Bolivia</option>
+                <option value="BA">Bosnia and Herzegovina</option>
+                <option value="BW">Botswana</option>
+                <option value="BR">Brazil</option>
+                <option value="BN">Brunei</option>
+                <option value="BG">Bulgaria</option>
+                <option value="BF">Burkina Faso</option>
+                <option value="BI">Burundi</option>
+                <option value="CV">Cabo Verde</option>
+                <option value="KH">Cambodia</option>
+                <option value="CM">Cameroon</option>
+                <option value="CA">Canada</option>
+                <option value="CF">Central African Republic</option>
+                <option value="TD">Chad</option>
+                <option value="CL">Chile</option>
+                <option value="CN">China</option>
+                <option value="CO">Colombia</option>
+                <option value="KM">Comoros</option>
+                <option value="CG">Congo</option>
+                <option value="CD">Congo (Democratic Republic)</option>
+                <option value="CR">Costa Rica</option>
+                <option value="CI">Côte d'Ivoire</option>
+                <option value="HR">Croatia</option>
+                <option value="CU">Cuba</option>
+                <option value="CY">Cyprus</option>
+                <option value="CZ">Czech Republic</option>
+                <option value="DK">Denmark</option>
+                <option value="DJ">Djibouti</option>
+                <option value="DM">Dominica</option>
+                <option value="DO">Dominican Republic</option>
+                <option value="EC">Ecuador</option>
+                <option value="EG">Egypt</option>
+                <option value="SV">El Salvador</option>
+                <option value="GQ">Equatorial Guinea</option>
+                <option value="ER">Eritrea</option>
+                <option value="EE">Estonia</option>
+                <option value="SZ">Eswatini</option>
+                <option value="ET">Ethiopia</option>
+                <option value="FJ">Fiji</option>
+                <option value="FI">Finland</option>
+                <option value="FR">France</option>
+                <option value="GA">Gabon</option>
+                <option value="GM">Gambia</option>
+                <option value="GE">Georgia</option>
+                <option value="DE">Germany</option>
+                <option value="GH">Ghana</option>
+                <option value="GR">Greece</option>
+                <option value="GD">Grenada</option>
+                <option value="GT">Guatemala</option>
+                <option value="GN">Guinea</option>
+                <option value="GW">Guinea-Bissau</option>
+                <option value="GY">Guyana</option>
+                <option value="HT">Haiti</option>
+                <option value="HN">Honduras</option>
+                <option value="HU">Hungary</option>
+                <option value="IS">Iceland</option>
+                <option value="IN">India</option>
+                <option value="ID">Indonesia</option>
+                <option value="IR">Iran</option>
+                <option value="IQ">Iraq</option>
+                <option value="IE">Ireland</option>
+                <option value="IL">Israel</option>
+                <option value="IT">Italy</option>
+                <option value="JM">Jamaica</option>
+                <option value="JP">Japan</option>
+                <option value="JO">Jordan</option>
+                <option value="KZ">Kazakhstan</option>
+                <option value="KE">Kenya</option>
+                <option value="KI">Kiribati</option>
+                <option value="KP">North Korea</option>
+                <option value="KR">South Korea</option>
+                <option value="KW">Kuwait</option>
+                <option value="KG">Kyrgyzstan</option>
+                <option value="LA">Laos</option>
+                <option value="LV">Latvia</option>
+                <option value="LB">Lebanon</option>
+                <option value="LS">Lesotho</option>
+                <option value="LR">Liberia</option>
+                <option value="LY">Libya</option>
+                <option value="LI">Liechtenstein</option>
+                <option value="LT">Lithuania</option>
+                <option value="LU">Luxembourg</option>
+                <option value="MG">Madagascar</option>
+                <option value="MW">Malawi</option>
+                <option value="MY">Malaysia</option>
+                <option value="MV">Maldives</option>
+                <option value="ML">Mali</option>
+                <option value="MT">Malta</option>
+                <option value="MH">Marshall Islands</option>
+                <option value="MR">Mauritania</option>
+                <option value="MU">Mauritius</option>
+                <option value="MX">Mexico</option>
+                <option value="FM">Micronesia</option>
+                <option value="MD">Moldova</option>
+                <option value="MC">Monaco</option>
+                <option value="MN">Mongolia</option>
+                <option value="ME">Montenegro</option>
+                <option value="MA">Morocco</option>
+                <option value="MZ">Mozambique</option>
+                <option value="MM">Myanmar</option>
+                <option value="NA">Namibia</option>
+                <option value="NR">Nauru</option>
+                <option value="NP">Nepal</option>
+                <option value="NL">Netherlands</option>
+                <option value="NZ">New Zealand</option>
+                <option value="NI">Nicaragua</option>
+                <option value="NE">Niger</option>
+                <option value="NG">Nigeria</option>
+                <option value="MK">North Macedonia</option>
+                <option value="NO">Norway</option>
+                <option value="OM">Oman</option>
+                <option value="PK">Pakistan</option>
+                <option value="PW">Palau</option>
+                <option value="PS">Palestine</option>
+                <option value="PA">Panama</option>
+                <option value="PG">Papua New Guinea</option>
+                <option value="PY">Paraguay</option>
+                <option value="PE">Peru</option>
+                <option value="PH">Philippines</option>
+                <option value="PL">Poland</option>
+                <option value="PT">Portugal</option>
+                <option value="QA">Qatar</option>
+                <option value="RO">Romania</option>
+                <option value="RU">Russia</option>
+                <option value="RW">Rwanda</option>
+                <option value="KN">Saint Kitts and Nevis</option>
+                <option value="LC">Saint Lucia</option>
+                <option value="VC">Saint Vincent and the Grenadines</option>
+                <option value="WS">Samoa</option>
+                <option value="SM">San Marino</option>
+                <option value="ST">Sao Tome and Principe</option>
+                <option value="SA">Saudi Arabia</option>
+                <option value="SN">Senegal</option>
+                <option value="RS">Serbia</option>
+                <option value="SC">Seychelles</option>
+                <option value="SL">Sierra Leone</option>
+                <option value="SG">Singapore</option>
+                <option value="SK">Slovakia</option>
+                <option value="SI">Slovenia</option>
+                <option value="SB">Solomon Islands</option>
+                <option value="SO">Somalia</option>
+                <option value="ZA">South Africa</option>
+                <option value="SS">South Sudan</option>
+                <option value="ES">Spain</option>
+                <option value="LK">Sri Lanka</option>
+                <option value="SD">Sudan</option>
+                <option value="SR">Suriname</option>
+                <option value="SE">Sweden</option>
+                <option value="CH">Switzerland</option>
+                <option value="SY">Syria</option>
+                <option value="TW">Taiwan</option>
+                <option value="TJ">Tajikistan</option>
+                <option value="TZ">Tanzania</option>
+                <option value="TH">Thailand</option>
+                <option value="TL">Timor-Leste</option>
+                <option value="TG">Togo</option>
+                <option value="TO">Tonga</option>
+                <option value="TT">Trinidad and Tobago</option>
+                <option value="TN">Tunisia</option>
+                <option value="TR">Turkey</option>
+                <option value="TM">Turkmenistan</option>
+                <option value="TV">Tuvalu</option>
+                <option value="UG">Uganda</option>
+                <option value="UA">Ukraine</option>
+                <option value="AE">United Arab Emirates</option>
+                <option value="GB">United Kingdom</option>
+                <option value="US">United States</option>
+                <option value="UY">Uruguay</option>
+                <option value="UZ">Uzbekistan</option>
+                <option value="VU">Vanuatu</option>
+                <option value="VA">Vatican City</option>
+                <option value="VE">Venezuela</option>
+                <option value="VN">Vietnam</option>
+                <option value="YE">Yemen</option>
+                <option value="ZM">Zambia</option>
+                <option value="ZW">Zimbabwe</option>
+              </select>
+              <div class="field-error" id="departureError">Departure country is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="arrivalCountry">Arrival Country <span class="required">*</span></label>
+              <select id="arrivalCountry">
+                <option value="">— Select Country —</option>
+                <option value="AF">Afghanistan</option>
+                <option value="AL">Albania</option>
+                <option value="DZ">Algeria</option>
+                <option value="AD">Andorra</option>
+                <option value="AO">Angola</option>
+                <option value="AG">Antigua and Barbuda</option>
+                <option value="AR">Argentina</option>
+                <option value="AM">Armenia</option>
+                <option value="AU">Australia</option>
+                <option value="AT">Austria</option>
+                <option value="AZ">Azerbaijan</option>
+                <option value="BS">Bahamas</option>
+                <option value="BH">Bahrain</option>
+                <option value="BD">Bangladesh</option>
+                <option value="BB">Barbados</option>
+                <option value="BY">Belarus</option>
+                <option value="BE">Belgium</option>
+                <option value="BZ">Belize</option>
+                <option value="BJ">Benin</option>
+                <option value="BT">Bhutan</option>
+                <option value="BO">Bolivia</option>
+                <option value="BA">Bosnia and Herzegovina</option>
+                <option value="BW">Botswana</option>
+                <option value="BR">Brazil</option>
+                <option value="BN">Brunei</option>
+                <option value="BG">Bulgaria</option>
+                <option value="BF">Burkina Faso</option>
+                <option value="BI">Burundi</option>
+                <option value="CV">Cabo Verde</option>
+                <option value="KH">Cambodia</option>
+                <option value="CM">Cameroon</option>
+                <option value="CA">Canada</option>
+                <option value="CF">Central African Republic</option>
+                <option value="TD">Chad</option>
+                <option value="CL">Chile</option>
+                <option value="CN">China</option>
+                <option value="CO">Colombia</option>
+                <option value="KM">Comoros</option>
+                <option value="CG">Congo</option>
+                <option value="CD">Congo (Democratic Republic)</option>
+                <option value="CR">Costa Rica</option>
+                <option value="CI">Côte d'Ivoire</option>
+                <option value="HR">Croatia</option>
+                <option value="CU">Cuba</option>
+                <option value="CY">Cyprus</option>
+                <option value="CZ">Czech Republic</option>
+                <option value="DK">Denmark</option>
+                <option value="DJ">Djibouti</option>
+                <option value="DM">Dominica</option>
+                <option value="DO">Dominican Republic</option>
+                <option value="EC">Ecuador</option>
+                <option value="EG">Egypt</option>
+                <option value="SV">El Salvador</option>
+                <option value="GQ">Equatorial Guinea</option>
+                <option value="ER">Eritrea</option>
+                <option value="EE">Estonia</option>
+                <option value="SZ">Eswatini</option>
+                <option value="ET">Ethiopia</option>
+                <option value="FJ">Fiji</option>
+                <option value="FI">Finland</option>
+                <option value="FR">France</option>
+                <option value="GA">Gabon</option>
+                <option value="GM">Gambia</option>
+                <option value="GE">Georgia</option>
+                <option value="DE">Germany</option>
+                <option value="GH">Ghana</option>
+                <option value="GR">Greece</option>
+                <option value="GD">Grenada</option>
+                <option value="GT">Guatemala</option>
+                <option value="GN">Guinea</option>
+                <option value="GW">Guinea-Bissau</option>
+                <option value="GY">Guyana</option>
+                <option value="HT">Haiti</option>
+                <option value="HN">Honduras</option>
+                <option value="HU">Hungary</option>
+                <option value="IS">Iceland</option>
+                <option value="IN">India</option>
+                <option value="ID">Indonesia</option>
+                <option value="IR">Iran</option>
+                <option value="IQ">Iraq</option>
+                <option value="IE">Ireland</option>
+                <option value="IL">Israel</option>
+                <option value="IT">Italy</option>
+                <option value="JM">Jamaica</option>
+                <option value="JP">Japan</option>
+                <option value="JO">Jordan</option>
+                <option value="KZ">Kazakhstan</option>
+                <option value="KE">Kenya</option>
+                <option value="KI">Kiribati</option>
+                <option value="KP">North Korea</option>
+                <option value="KR">South Korea</option>
+                <option value="KW">Kuwait</option>
+                <option value="KG">Kyrgyzstan</option>
+                <option value="LA">Laos</option>
+                <option value="LV">Latvia</option>
+                <option value="LB">Lebanon</option>
+                <option value="LS">Lesotho</option>
+                <option value="LR">Liberia</option>
+                <option value="LY">Libya</option>
+                <option value="LI">Liechtenstein</option>
+                <option value="LT">Lithuania</option>
+                <option value="LU">Luxembourg</option>
+                <option value="MG">Madagascar</option>
+                <option value="MW">Malawi</option>
+                <option value="MY">Malaysia</option>
+                <option value="MV">Maldives</option>
+                <option value="ML">Mali</option>
+                <option value="MT">Malta</option>
+                <option value="MH">Marshall Islands</option>
+                <option value="MR">Mauritania</option>
+                <option value="MU">Mauritius</option>
+                <option value="MX">Mexico</option>
+                <option value="FM">Micronesia</option>
+                <option value="MD">Moldova</option>
+                <option value="MC">Monaco</option>
+                <option value="MN">Mongolia</option>
+                <option value="ME">Montenegro</option>
+                <option value="MA">Morocco</option>
+                <option value="MZ">Mozambique</option>
+                <option value="MM">Myanmar</option>
+                <option value="NA">Namibia</option>
+                <option value="NR">Nauru</option>
+                <option value="NP">Nepal</option>
+                <option value="NL">Netherlands</option>
+                <option value="NZ">New Zealand</option>
+                <option value="NI">Nicaragua</option>
+                <option value="NE">Niger</option>
+                <option value="NG">Nigeria</option>
+                <option value="MK">North Macedonia</option>
+                <option value="NO">Norway</option>
+                <option value="OM">Oman</option>
+                <option value="PK">Pakistan</option>
+                <option value="PW">Palau</option>
+                <option value="PS">Palestine</option>
+                <option value="PA">Panama</option>
+                <option value="PG">Papua New Guinea</option>
+                <option value="PY">Paraguay</option>
+                <option value="PE">Peru</option>
+                <option value="PH">Philippines</option>
+                <option value="PL">Poland</option>
+                <option value="PT">Portugal</option>
+                <option value="QA">Qatar</option>
+                <option value="RO">Romania</option>
+                <option value="RU">Russia</option>
+                <option value="RW">Rwanda</option>
+                <option value="KN">Saint Kitts and Nevis</option>
+                <option value="LC">Saint Lucia</option>
+                <option value="VC">Saint Vincent and the Grenadines</option>
+                <option value="WS">Samoa</option>
+                <option value="SM">San Marino</option>
+                <option value="ST">Sao Tome and Principe</option>
+                <option value="SA">Saudi Arabia</option>
+                <option value="SN">Senegal</option>
+                <option value="RS">Serbia</option>
+                <option value="SC">Seychelles</option>
+                <option value="SL">Sierra Leone</option>
+                <option value="SG">Singapore</option>
+                <option value="SK">Slovakia</option>
+                <option value="SI">Slovenia</option>
+                <option value="SB">Solomon Islands</option>
+                <option value="SO">Somalia</option>
+                <option value="ZA">South Africa</option>
+                <option value="SS">South Sudan</option>
+                <option value="ES">Spain</option>
+                <option value="LK">Sri Lanka</option>
+                <option value="SD">Sudan</option>
+                <option value="SR">Suriname</option>
+                <option value="SE">Sweden</option>
+                <option value="CH">Switzerland</option>
+                <option value="SY">Syria</option>
+                <option value="TW">Taiwan</option>
+                <option value="TJ">Tajikistan</option>
+                <option value="TZ">Tanzania</option>
+                <option value="TH">Thailand</option>
+                <option value="TL">Timor-Leste</option>
+                <option value="TG">Togo</option>
+                <option value="TO">Tonga</option>
+                <option value="TT">Trinidad and Tobago</option>
+                <option value="TN">Tunisia</option>
+                <option value="TR">Turkey</option>
+                <option value="TM">Turkmenistan</option>
+                <option value="TV">Tuvalu</option>
+                <option value="UG">Uganda</option>
+                <option value="UA">Ukraine</option>
+                <option value="AE">United Arab Emirates</option>
+                <option value="GB">United Kingdom</option>
+                <option value="US">United States</option>
+                <option value="UY">Uruguay</option>
+                <option value="UZ">Uzbekistan</option>
+                <option value="VU">Vanuatu</option>
+                <option value="VA">Vatican City</option>
+                <option value="VE">Venezuela</option>
+                <option value="VN">Vietnam</option>
+                <option value="YE">Yemen</option>
+                <option value="ZM">Zambia</option>
+                <option value="ZW">Zimbabwe</option>
+              </select>
+              <div class="field-error" id="arrivalError">Arrival country is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="travelDate">Travel Date <span class="required">*</span></label>
+              <input type="date" id="travelDate" />
+              <div class="field-error" id="travelDateError">Travel date is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="borderPostId">Border Post <span class="required">*</span></label>
+              <select id="borderPostId">
+                <option value="">— Select Border Post —</option>
+                <option value="GHA-0001">Kotoka International (GHA)</option>
+                <option value="GHA-0002">Aflao Border (GHA)</option>
+                <option value="GHA-0003">Tema Port (GHA)</option>
+                <option value="NGA-0001">Murtala Airport (NGA)</option>
+              </select>
+              <div class="field-error" id="borderPostError">Border post is required.</div>
+            </div>
+          </div>
+
+          <div class="section-divider" style="margin-top:20px;"><span>Processing Officer</span></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="processingOfficer">Officer ID <span class="required">*</span></label>
+              <input type="text" id="processingOfficer" placeholder="Your Officer ID" />
+              <div class="field-hint">Auto-filled from session in production</div>
+              <div class="field-error" id="officerError">Officer ID is required.</div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="resetTravelForm()">Clear</button>
+        <button class="btn btn-primary" id="travelSubmitBtn" onclick="submitTravelRecord()">Log Border Crossing</button>
+      </div>
+    </div>
+
+    <!-- All records -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">📋</span>
+          <h2>All Travel Records</h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadAllRecords()">↻ Refresh</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="filterNationalId" placeholder="Filter by National ID or Passport No..." />
+        <select id="filterEntryExit">
+          <option value="">Entry & Exit</option>
+          <option value="entry">Entry only</option>
+          <option value="exit">Exit only</option>
+        </select>
+        <select id="filterMode">
+          <option value="">All Modes</option>
+          <option value="air">Air</option>
+          <option value="land">Land</option>
+          <option value="sea">Sea</option>
+        </select>
+        <input type="date" id="filterDateFrom" />
+        <input type="date" id="filterDateTo" />
+        <button class="btn btn-primary btn-sm" onclick="filterRecords()">Filter</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Travel ID</th><th>National ID</th><th>Passport No.</th>
+              <th>Type</th><th>From</th><th>To</th>
+              <th>Mode</th><th>Date</th><th>Border Post</th>
+            </tr>
+          </thead>
+          <tbody id="allRecordsBody">
+            <tr class="empty-row"><td colspan="9">No records loaded. Click Refresh.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  document.getElementById('travelDate').max = new Date().toISOString().split('T')[0];
+
+  function switchRole(role) {
+    document.querySelectorAll('.role-btn').forEach((b,i) => b.classList.toggle('active',(role==='citizen'&&i===0)||(role==='officer'&&i===1)));
+    document.getElementById('citizenView').classList.toggle('active', role==='citizen');
+    document.getElementById('officerView').classList.toggle('active', role==='officer');
+    document.getElementById('rolePill').textContent = role==='citizen' ? '👤 Citizen View' : '🛂 Officer View';
+    document.getElementById('pageTitle').textContent = role==='citizen' ? 'My Travel History' : 'Travel Records';
+    document.getElementById('pageDesc').textContent = role==='citizen'
+      ? 'View your personal entry and exit travel records.'
+      : 'Log border crossings and search all travel records.';
+    if (role==='officer') { loadStats(); loadAllRecords(); }
+  }
+
+  async function loadCitizenTravel() {
+    const id = document.getElementById('citizenLookupId').value.trim();
+    if (!id) { showToast('Enter your National ID.','info'); return; }
+    try {
+      const res = await fetch(`/api/travel/citizen/${id}`);
+      const data = await res.json();
+      const card = document.getElementById('citizenTimelineCard');
+      card.style.display = 'block';
+      document.getElementById('citizenTravelCount').textContent = `${data.length} record${data.length!==1?'s':''}`;
+      const timeline = document.getElementById('citizenTimeline');
+      if (!data.length) { timeline.innerHTML=`<div style="text-align:center;color:var(--grey);padding:28px;font-style:italic;">No travel records found.</div>`; return; }
+      timeline.innerHTML = data.map(r=>`
+        <div class="timeline-item">
+          <div class="timeline-icon ${r.entryOrExit}">${r.entryOrExit==='entry'?'🛬':'🛫'}</div>
+          <div class="timeline-content">
+            <div class="timeline-title">${r.departureCountry} → ${r.arrivalCountry} <span class="badge badge-${r.entryOrExit}" style="margin-left:8px;">${r.entryOrExit}</span></div>
+            <div class="timeline-meta">
+              <span>📍 ${r.borderPost}</span>
+              <span class="badge badge-${r.modeOfTravel}">${r.modeOfTravel}</span>
+              <span>🪪 ${r.passportNo}</span>
+            </div>
+          </div>
+          <div class="timeline-date">${formatDate(r.travelDate)}</div>
+        </div>`).join('');
+    } catch { showToast('✗ Could not load travel records.','error-toast'); }
+  }
+
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/travel/stats');
+      const d = await res.json();
+      document.getElementById('statTotal').textContent   = d.total   ?? '—';
+      document.getElementById('statEntries').textContent = d.entries  ?? '—';
+      document.getElementById('statExits').textContent   = d.exits    ?? '—';
+      document.getElementById('statMonth').textContent   = d.month    ?? '—';
+    } catch {}
+  }
+
+  async function verifyPassport() {
+    const nationalId = document.getElementById('travelNationalId').value.trim();
+    const passportNo = document.getElementById('travelPassportNo').value.trim();
+    const result = document.getElementById('verifyResult');
+    if (!nationalId||!passportNo) { result.className='verify-result'; return; }
+    try {
+      const res = await fetch(`/api/passport/verify?nationalId=${nationalId}&passportNo=${passportNo}`);
+      const data = await res.json();
+      if (data.valid) {
+        result.className='verify-result valid';
+        result.textContent=`✓ Valid — ${data.citizenName} — expires ${data.expiryDate}`;
+      } else {
+        result.className='verify-result invalid';
+        result.textContent=`✗ ${data.message||'Invalid or mismatched passport.'}`;
+      }
+    } catch { result.className='verify-result'; }
+  }
+
+  function validateTravel() {
+    let valid = true;
+    [['travelNationalId','travelNationalIdError'],['travelPassportNo','travelPassportError'],
+     ['entryOrExit','entryOrExitError'],['modeOfTravel','modeError'],
+     ['departureCountry','departureError'],['arrivalCountry','arrivalError'],
+     ['borderPostId','borderPostError'],['processingOfficer','officerError']
+    ].forEach(([id,errId])=>{
+      const el=document.getElementById(id), err=document.getElementById(errId);
+      if(!el.value.trim()){el.classList.add('error');err.classList.add('visible');valid=false;}
+      else{el.classList.remove('error');err.classList.remove('visible');}
+    });
+    const td=document.getElementById('travelDate'), tdErr=document.getElementById('travelDateError');
+    if(!td.value){td.classList.add('error');tdErr.classList.add('visible');valid=false;}
+    else{td.classList.remove('error');tdErr.classList.remove('visible');}
+    const dep=document.getElementById('departureCountry').value, arr=document.getElementById('arrivalCountry').value;
+    if(dep&&arr&&dep===arr){showToast('✗ Departure and arrival cannot be the same.','error-toast');valid=false;}
+    return valid;
+  }
+
+  async function submitTravelRecord() {
+    if (!validateTravel()) return;
+    const btn=document.getElementById('travelSubmitBtn');
+    btn.disabled=true; btn.textContent='Logging...';
+    const payload={
+      nationalIdNo:     document.getElementById('travelNationalId').value.trim(),
+      passportNo:       document.getElementById('travelPassportNo').value.trim(),
+      entryOrExit:      document.getElementById('entryOrExit').value,
+      modeOfTravel:     document.getElementById('modeOfTravel').value,
+      departureCountry: document.getElementById('departureCountry').value,
+      arrivalCountry:   document.getElementById('arrivalCountry').value,
+      travelDate:       document.getElementById('travelDate').value,
+      borderPostId:     document.getElementById('borderPostId').value,
+      officerId:        document.getElementById('processingOfficer').value.trim(),
+    };
+    try {
+      const res=await fetch('/api/travel/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await res.json();
+      if(res.ok){showToast('✓ Border crossing logged.','success');resetTravelForm();loadAllRecords();loadStats();}
+      else{showToast(`✗ ${data.message||'Failed.'}`, 'error-toast');}
+    } catch { showToast('✗ Could not connect to server.','error-toast'); }
+    finally { btn.disabled=false; btn.textContent='Log Border Crossing'; }
+  }
+
+  async function loadAllRecords() {
+    try {
+      const res=await fetch('/api/travel/all');
+      renderRecords(await res.json());
+    } catch { showToast('✗ Could not load records.','error-toast'); }
+  }
+
+  async function filterRecords() {
+    const params=new URLSearchParams();
+    const q=document.getElementById('filterNationalId').value.trim();
+    const ee=document.getElementById('filterEntryExit').value;
+    const mode=document.getElementById('filterMode').value;
+    const from=document.getElementById('filterDateFrom').value;
+    const to=document.getElementById('filterDateTo').value;
+    if(q) params.append('q',q);
+    if(ee) params.append('entryOrExit',ee);
+    if(mode) params.append('mode',mode);
+    if(from) params.append('from',from);
+    if(to) params.append('to',to);
+    try {
+      const res=await fetch(`/api/travel/all?${params.toString()}`);
+      renderRecords(await res.json());
+    } catch { showToast('✗ Filter failed.','error-toast'); }
+  }
+
+  function renderRecords(data) {
+    const tbody=document.getElementById('allRecordsBody');
+    if(!data.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="9">No records found.</td></tr>`;return;}
+    tbody.innerHTML=data.map(r=>`
+      <tr>
+        <td><strong>${r.travelId}</strong></td>
+        <td>${r.nationalIdNo}</td>
+        <td>${r.passportNo}</td>
+        <td><span class="badge badge-${r.entryOrExit}">${r.entryOrExit}</span></td>
+        <td>${r.departureCountry}</td>
+        <td>${r.arrivalCountry}</td>
+        <td><span class="badge badge-${r.modeOfTravel}">${r.modeOfTravel}</span></td>
+        <td>${formatDate(r.travelDate)}</td>
+        <td>${r.borderPost}</td>
+      </tr>`).join('');
+  }
+
+  function resetTravelForm() {
+    document.getElementById('travelForm').reset();
+    document.querySelectorAll('.field-error').forEach(e=>e.classList.remove('visible'));
+    document.querySelectorAll('input,select').forEach(e=>e.classList.remove('error'));
+    document.getElementById('verifyResult').className='verify-result';
+  }
+
+  function formatDate(d) {
+    if(!d) return '—';
+    return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }
+
+  function showToast(msg,type) {
+    const toast=document.getElementById('toast');
+    toast.textContent=msg; toast.className=`toast ${type} show`;
+    setTimeout(()=>toast.classList.remove('show'),3500);
+  }
+</script>
+</body>
+</html>
