@@ -476,8 +476,21 @@
        OFFICER VIEW
   ══════════════════════════════════════ -->
   <div id="officerView">
+    <div class="card" id="officerLoginCard">
+      <div class="card-header">
+        <div class="card-header-left">
+        <span class="card-header-icon">🛂</span>
+        <h2>Officer Sign In</h2>
+      </div>
+    </div>
+    <div style="padding:20px 24px;display:flex;gap:12px;">
+      <input type="text" id="sessionOfficerId" placeholder="Enter your Officer ID e.g. OF00001" style="flex:1;" />
+      <button class="btn btn-primary" onclick="setOfficerSession()">Continue</button>
+    </div>
+  </div>
 
-    <!-- Search -->
+  <div id="officerDashboard" style="display:none;">
+  <!-- Search -->
     <div class="card">
       <div class="card-header">
         <div class="card-header-left">
@@ -559,7 +572,9 @@
       </div>
     </div>
 
-  </div><!-- /officerView -->
+    </div><!-- /officerView -->
+  </div>
+    
 
 </main>
 
@@ -637,6 +652,7 @@
       passportType:       document.getElementById('passportType').value,
       existingPassportNo: document.getElementById('existingPassportNo').value.trim() || null,
       notes:              document.getElementById('appNotes').value.trim() || null,
+      officerID:          'OF00001' // For demo purposes; in real app, this would be assigned by the system 
     };
 
     try {
@@ -692,6 +708,18 @@
     } catch {
       showToast('✗ Could not load applications.', 'error-toast');
     }
+  }
+
+  // Offier session
+  let sessionOfficer = null;
+
+  function setOfficerSession() {
+    const id = document.getElementById('sessionOfficerId').value.trim();
+    if (!id) { showToast('Enter your Officer ID', 'info'); return; }
+    sessionOfficer = id;
+    document.getElementById('officerLoginCard').style.display = 'none';
+    document.getElementById('officerDashboard').style.display = 'block';
+    loadPendingApplications();
   }
 
   // ── Officer: search passports ──

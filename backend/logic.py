@@ -1,25 +1,25 @@
-from datetime import date, datetime
-
 import os
+import re
+from datetime import date, datetime, timedelta
+
 import mysql.connector
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+def to_camel(name):
+    s = re.sub(r'([A-Z])', r'_\1', name).lower().lstrip('_')
+    parts = s.split('_')
+    return parts[0] + ''.join(p.capitalize() for p in parts[1:])
+
+def camel_rows(rows):
+    return [{to_camel(k): v for k, v in row.items()} for row in rows]
+
+BASE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "pages"
+)
 app = Flask(__name__)
-CORS(app)  # allows HTML frontend to call Flask
-
-
-@app.route("/")
-def index():
-    return send_from_directory(BASE_DIR, "citizen.html")
-
-
-@app.route("/<path:filename>")
-def serve_file(filename):
-    return send_from_directory(BASE_DIR, filename)
-
+CORS(app)
 
 DB_CONFIG = {
     "host": "localhost",
@@ -34,13 +34,33 @@ def get_db():
     return mysql.connector.connect(**DB_CONFIG)
 
 
-# ── TEST ───
+def log_audit(cursor, officer_id, action_type, table_affected, record_id):
+    try:
+        cursor.execute(
+            "INSERT INTO AUDIT_LOG (OfficerID, ActionType, TableAffected, RecordID) VALUES (%s, %s, %s, %s)",
+            (officer_id, action_type, table_affected, str(record_id)),
+        )
+    except Exception:
+        pass  # audit failure must never break the main operation
+
+
+# ── STATIC FILES ───────────────────────────────────────────────
+@app.route("/")
+def index():
+    return send_from_directory(BASE_DIR, "citizen.html")
+
+
+@app.route("/<path:filename>")
+def serve_file(filename):
+    return send_from_directory(BASE_DIR, filename)
+
+
+# ── TEST ────────────────────────────────────────────────────────
 @app.route("/test")
 def test_connection():
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute("SELECT 1")
+        db.cursor().execute("SELECT 1")
         db.close()
         return jsonify(
             {"status": "connected", "message": "Database connection successful"}
@@ -49,12 +69,13 @@ def test_connection():
         return jsonify({"status": "failed", "message": str(e)}), 500
 
 
-# ─────── CITIZEN ───────
+# ══════════════════════════════════════════════════════════════
+# CITIZEN
+# ══════════════════════════════════════════════════════════════
 @app.route("/api/citizen/check/<national_id>")
 def check_citizen(national_id):
     db = get_db()
     cursor = db.cursor()
-    # SELECT query that will run to the database
     cursor.execute(
         "SELECT NationalIDNo FROM CITIZEN WHERE NationalIDNo = %s", (national_id,)
     )
@@ -66,18 +87,17 @@ def check_citizen(national_id):
 @app.route("/api/citizen/register", methods=["POST"])
 def register_citizen():
     data = request.get_json()
-    # Application layer date check
     if data["dob"] > str(date.today()):
         return jsonify({"message": "Date of birth cannot be in the future"}), 400
-
     try:
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
             """
-            INSERT INTO CITIZEN 
-            (NationalIDNo, FirstName, LastName, OtherName, DOB, Gender, CountryCode, Email, Address)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO CITIZEN
+            (NationalIDNo, FirstName, LastName, OtherName, DOB, Gender,
+             CountryOfBirth, Nationality, Email, Phone, Address)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 data["nationalIdNo"],
@@ -86,21 +106,25 @@ def register_citizen():
                 data.get("otherName"),
                 data["dob"],
                 data["gender"],
-                data["countryCode"],
+                data["countryOfBirth"],
+                data["nationality"],
                 data["email"],
+                data["phone"],
                 data["address"],
             ),
         )
         db.commit()
         db.close()
         return jsonify({"message": "Citizen registered successfully"}), 201
-    except mysql.connector.IntegrityError as e:
-        return jsonify({"message": "National ID already exists"}), 409
+    except mysql.connector.IntegrityError:
+        return jsonify({"message": "National ID or email already exists"}), 409
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
 
-# ─────── PASSPORT ───────────
+# ══════════════════════════════════════════════════════════════
+# PASSPORT
+# ══════════════════════════════════════════════════════════════
 @app.route("/api/passport/verify")
 def verify_passport():
     national_id = request.args.get("nationalId")
@@ -110,8 +134,8 @@ def verify_passport():
         cursor = db.cursor(dictionary=True)
         cursor.execute(
             """
-            SELECT p.PassportNo, p.ExpiryDate, p.PassportStatus,
-                   c.FirstName, c.LastName
+            SELECT p.PassportNo, c.NationalIDNo, CONCAT(c.FirstName, ' ', c.LastName), 
+                    p.IssueDate, p.ExpiryDate, p.PassportStatus
             FROM PASSPORT p
             JOIN CITIZEN c ON p.NationalIDNo = c.NationalIDNo
             WHERE p.NationalIDNo = %s AND p.PassportNo = %s
@@ -124,7 +148,7 @@ def verify_passport():
             return jsonify(
                 {"valid": False, "message": "Passport not found for this citizen"}
             )
-        if row["PassportStatus"] != "active":
+        if row["PassportStatus"] != "Active":
             return jsonify(
                 {"valid": False, "message": f"Passport is {row['PassportStatus']}"}
             )
@@ -139,7 +163,410 @@ def verify_passport():
         return jsonify({"valid": False, "message": str(e)}), 500
 
 
-# ──────────── TRAVEL ────────────
+@app.route("/api/passport/apply", methods=["POST"])
+def passport_apply():
+    data = request.get_json()
+    if data.get("applicationDate", str(date.today())) > str(date.today()):
+        return jsonify({"message": "Application date cannot be in the future"}), 400
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM APPLICATION")
+        count = cursor.fetchone()[0]
+        app_id = f"APP{count + 1:04d}"
+        cursor.execute(
+            """
+            INSERT INTO APPLICATION
+            (ApplicationID, NationalIDNo, OfficerID, ApplicationType,
+             ApplicationStatus, ApplicationDate)
+            VALUES (%s, %s, %s, %s, 'Pending', %s)
+        """,
+            (
+                app_id,
+                data["nationalIdNo"],
+                data["officerId"],
+                data["applicationType"],
+                str(date.today()),
+            ),
+        )
+        db.commit()
+        db.close()
+        return jsonify(
+            {"message": "Application submitted", "applicationId": app_id}
+        ), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/passport/applications/<national_id>")
+def get_applications(national_id):
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT a.ApplicationID, a.ApplicationType, a.ApplicationStatus,
+                   a.ApplicationDate, p.PassportNo
+            FROM APPLICATION a
+            LEFT JOIN PASSPORT p ON a.ApplicationID = p.ApplicationID
+            WHERE a.NationalIDNo = %s
+            ORDER BY a.ApplicationDate DESC
+        """,
+            (national_id,),
+        )
+        rows = cursor.fetchall()
+        db.close()
+        for r in rows:
+            r["ApplicationDate"] = str(r["ApplicationDate"])
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/passport/pending")
+def get_pending():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT ApplicationID, NationalIDNo, ApplicationType,
+                   ApplicationStatus, ApplicationDate
+            FROM APPLICATION
+            WHERE ApplicationStatus = 'Pending'
+              AND ApplicationType IN ('New Passport', 'Renewal')
+            ORDER BY ApplicationDate ASC
+        """)
+        rows = cursor.fetchall()
+        db.close()
+        for r in rows:
+            r["ApplicationDate"] = str(r["ApplicationDate"])
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/passport/process", methods=["POST"])
+def process_passport():
+    data = request.get_json()
+    app_id = data["applicationId"]
+    decision = data["decision"]  # 'approved' or 'rejected'
+    reason = data.get("reason")
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # Fetch application
+        cursor.execute(
+            """
+            SELECT a.*, c.Nationality
+            FROM APPLICATION a
+            JOIN CITIZEN c ON a.NationalIDNo = c.NationalIDNo
+            WHERE a.ApplicationID = %s
+        """,
+            (app_id,),
+        )
+        appl = cursor.fetchone()
+        if not appl:
+            db.close()
+            return jsonify({"message": "Application not found"}), 404
+
+        status_map = {"approved": "Approved", "rejected": "Rejected"}
+        cursor.execute(
+            """
+            UPDATE APPLICATION
+            SET ApplicationStatus = %s, RejectionReason = %s
+            WHERE ApplicationID = %s
+        """,
+            (status_map[decision], reason, app_id),
+        )
+
+        passport_no = None
+
+        if decision == "approved":
+            # Auto-create passport record
+            cursor.execute("SELECT COUNT(*) FROM PASSPORT")
+            count = cursor.fetchone()["COUNT(*)"]
+            passport_no = f"GH{count + 1:05d}-{str(date.today().year)[2:]}"
+            issue_date = date.today()
+            expiry_date = issue_date.replace(year=issue_date.year + 10)
+
+            # Archive existing active passport for renewals
+            if appl["ApplicationType"] == "Renewal":
+                cursor.execute(
+                    """
+                    UPDATE PASSPORT SET PassportStatus = 'Expired'
+                    WHERE NationalIDNo = %s AND PassportStatus = 'Active'
+                """,
+                    (appl["NationalIDNo"],),
+                )
+
+            cursor.execute(
+                """
+                INSERT INTO PASSPORT
+                (PassportNo, NationalIDNo, ApplicationID, PassportType,
+                 IssueDate, ExpiryDate, Nationality, IssuingOffice, PassportStatus)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Active')
+            """,
+                (
+                    passport_no,
+                    appl["NationalIDNo"],
+                    app_id,
+                    data.get("passportType", "Ordinary"),
+                    str(issue_date),
+                    str(expiry_date),
+                    appl["Nationality"],
+                    data.get("issuingOffice", "Head Office"),
+                ),
+            )
+
+        db.commit()
+        db.close()
+        return jsonify(
+            {
+                "message": f"Application {decision}",
+                "passportNo": passport_no if decision == "approved" else None,
+            }
+        ), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/passport/search")
+def search_passports():
+    q = request.args.get("q", "")
+    status = request.args.get("status", "")
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        query = """
+            SELECT p.PassportNo, p.NationalIDNo, p.PassportType,
+                   p.IssueDate, p.ExpiryDate, p.PassportStatus,
+                   c.FirstName, c.LastName
+            FROM PASSPORT p
+            JOIN CITIZEN c ON p.NationalIDNo = c.NationalIDNo
+            WHERE (p.PassportNo LIKE %s OR p.NationalIDNo LIKE %s)
+        """
+        params = [f"%{q}%", f"%{q}%"]
+        if status:
+            query += " AND p.PassportStatus = %s"
+            params.append(status.capitalize())
+        query += " ORDER BY p.IssueDate DESC"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        db.close()
+        for r in rows:
+            r["IssueDate"] = str(r["IssueDate"])
+            r["ExpiryDate"] = str(r["ExpiryDate"])
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/passport/revoke", methods=["POST"])
+def revoke_passport():
+    data = request.get_json()
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            "UPDATE PASSPORT SET PassportStatus = 'Revoked' WHERE PassportNo = %s",
+            (data["passportNo"],),
+        )
+        db.commit()
+        db.close()
+        return jsonify({"message": "Passport revoked"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
+# VISA
+# ══════════════════════════════════════════════════════════════
+@app.route("/api/visa/apply", methods=["POST"])
+def visa_apply():
+    data = request.get_json()
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM APPLICATION")
+        count = cursor.fetchone()[0]
+        app_id = f"APP{count + 1:04d}"
+        cursor.execute("SELECT COUNT(*) FROM VISA")
+        vcount = cursor.fetchone()[0]
+        visa_id = f"{data['nationalIdNo'][:8]}-{vcount + 1:03d}"
+
+        cursor.execute(
+            """
+            INSERT INTO APPLICATION
+            (ApplicationID, NationalIDNo, OfficerID, ApplicationType, ApplicationStatus, ApplicationDate)
+            VALUES (%s, %s, %s, 'Visa', 'Pending', %s)
+        """,
+            (app_id, data["nationalIdNo"], data["officerId"], str(date.today())),
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO VISA
+            (VisaID, NationalIDNo, PassportNo, ApplicationID, OfficerID,
+             VisaType, VisaStatus, NumberOfEntries, DurationOfStay)
+            VALUES (%s, %s, %s, %s, %s, %s, 'Pending', %s, %s)
+        """,
+            (
+                visa_id,
+                data["nationalIdNo"],
+                data["passportNo"],
+                app_id,
+                data["officerId"],
+                data["visaType"],
+                data.get("numberOfEntries"),
+                data.get("durationOfStay"),
+            ),
+        )
+        db.commit()
+        db.close()
+        return jsonify(
+            {"message": "Visa application submitted", "visaId": visa_id}
+        ), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/visa/citizen/<national_id>")
+def get_citizen_visas(national_id):
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT VisaID, VisaType, IssueDate, ExpiryDate,
+                   VisaStatus, DurationOfStay, NumberOfEntries, PassportNo
+            FROM VISA
+            WHERE NationalIDNo = %s
+            ORDER BY IssueDate DESC
+        """,
+            (national_id,),
+        )
+        rows = cursor.fetchall()
+        db.close()
+        for r in rows:
+            if r["IssueDate"]:
+                r["IssueDate"] = str(r["IssueDate"])
+            if r["ExpiryDate"]:
+                r["ExpiryDate"] = str(r["ExpiryDate"])
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/visa/pending")
+def get_pending_visas():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT v.VisaID, v.NationalIDNo, v.VisaType, v.VisaStatus,
+                   a.ApplicationDate
+            FROM VISA v
+            JOIN APPLICATION a ON v.ApplicationID = a.ApplicationID
+            WHERE v.VisaStatus = 'Pending'
+            ORDER BY a.ApplicationDate ASC
+        """)
+        rows = cursor.fetchall()
+        db.close()
+        for r in rows:
+            r["ApplicationDate"] = str(r["ApplicationDate"])
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/visa/all")
+def get_all_visas():
+    q = request.args.get("q", "")
+    status = request.args.get("status", "")
+    vtype = request.args.get("type", "")
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        query = """
+            SELECT v.VisaID, v.NationalIDNo, v.VisaType, v.VisaStatus,
+                   v.IssueDate, v.ExpiryDate, v.PassportNo
+            FROM VISA v WHERE (v.VisaID LIKE %s OR v.NationalIDNo LIKE %s)
+        """
+        params = [f"%{q}%", f"%{q}%"]
+        if status:
+            query += " AND v.VisaStatus = %s"
+            params.append(status)
+        if vtype:
+            query += " AND v.VisaType = %s"
+            params.append(vtype)
+        query += " ORDER BY v.IssueDate DESC"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        db.close()
+        for r in rows:
+            if r["IssueDate"]:
+                r["IssueDate"] = str(r["IssueDate"])
+            if r["ExpiryDate"]:
+                r["ExpiryDate"] = str(r["ExpiryDate"])
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/visa/process", methods=["POST"])
+def process_visa():
+    data = request.get_json()
+    visa_id = data["visaId"]
+    decision = data["decision"]
+    reason = data.get("reason")
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        if decision == "approved":
+            issue_date = date.today()
+            duration = data.get("durationOfStay", 6)
+            expiry_date = issue_date.replace(
+                month=issue_date.month + duration
+                if issue_date.month + duration <= 12
+                else ((issue_date.month + duration) % 12),
+                year=issue_date.year + (issue_date.month + duration - 1) // 12,
+            )
+            cursor.execute(
+                """
+                UPDATE VISA SET VisaStatus = 'Approved',
+                IssueDate = %s, ExpiryDate = %s WHERE VisaID = %s
+            """,
+                (str(issue_date), str(expiry_date), visa_id),
+            )
+        else:
+            # Rejected visa must have PassportNo set to NULL (business rule)
+            cursor.execute(
+                """
+                UPDATE VISA SET VisaStatus = 'Rejected', PassportNo = NULL
+                WHERE VisaID = %s
+            """,
+                (visa_id,),
+            )
+        cursor.execute(
+            """
+            UPDATE APPLICATION a
+            JOIN VISA v ON a.ApplicationID = v.ApplicationID
+            SET a.ApplicationStatus = %s, a.RejectionReason = %s
+            WHERE v.VisaID = %s
+        """,
+            ("Approved" if decision == "approved" else "Rejected", reason, visa_id),
+        )
+        db.commit()
+        db.close()
+        return jsonify({"message": f"Visa {decision}"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
+# TRAVEL
+# ══════════════════════════════════════════════════════════════
 @app.route("/api/travel/citizen/<national_id>")
 def get_citizen_travel(national_id):
     try:
@@ -161,7 +588,7 @@ def get_citizen_travel(national_id):
         db.close()
         for r in rows:
             r["TravelDate"] = str(r["TravelDate"])
-        return jsonify(rows)
+        return jsonify(camel_rows(rows))
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
@@ -171,30 +598,24 @@ def travel_stats():
     try:
         db = get_db()
         cursor = db.cursor()
-        today = datetime.today().date()
-        first_of_month = today.replace(day=1)
-
+        today = date.today()
+        first = today.replace(day=1)
         cursor.execute("SELECT COUNT(*) FROM TRAVEL_RECORD")
         total = cursor.fetchone()[0]
-
         cursor.execute(
             "SELECT COUNT(*) FROM TRAVEL_RECORD WHERE EntryOrExit = 'entry' AND TravelDate = %s",
             (today,),
         )
         entries = cursor.fetchone()[0]
-
         cursor.execute(
             "SELECT COUNT(*) FROM TRAVEL_RECORD WHERE EntryOrExit = 'exit' AND TravelDate = %s",
             (today,),
         )
         exits = cursor.fetchone()[0]
-
         cursor.execute(
-            "SELECT COUNT(*) FROM TRAVEL_RECORD WHERE TravelDate >= %s",
-            (first_of_month,),
+            "SELECT COUNT(*) FROM TRAVEL_RECORD WHERE TravelDate >= %s", (first,)
         )
         month = cursor.fetchone()[0]
-
         db.close()
         return jsonify(
             {"total": total, "entries": entries, "exits": exits, "month": month}
@@ -208,7 +629,6 @@ def get_all_travel():
     try:
         db = get_db()
         cursor = db.cursor(dictionary=True)
-
         query = """
             SELECT t.TravelID, t.NationalIDNo, t.PassportNo, t.EntryOrExit,
                    t.DepartureCountry, t.ArrivalCountry, t.ModeOfTravel,
@@ -218,39 +638,33 @@ def get_all_travel():
             WHERE 1=1
         """
         params = []
-
         q = request.args.get("q")
         if q:
             query += " AND (t.NationalIDNo LIKE %s OR t.PassportNo LIKE %s)"
             params += [f"%{q}%", f"%{q}%"]
-
-        entry_exit = request.args.get("entryOrExit")
-        if entry_exit:
+        ee = request.args.get("entryOrExit")
+        if ee:
             query += " AND t.EntryOrExit = %s"
-            params.append(entry_exit)
-
+            params.append(ee)
         mode = request.args.get("mode")
         if mode:
             query += " AND t.ModeOfTravel = %s"
             params.append(mode)
-
-        date_from = request.args.get("from")
-        if date_from:
+        df = request.args.get("from")
+        if df:
             query += " AND t.TravelDate >= %s"
-            params.append(date_from)
-
-        date_to = request.args.get("to")
-        if date_to:
+            params.append(df)
+        dt = request.args.get("to")
+        if dt:
             query += " AND t.TravelDate <= %s"
-            params.append(date_to)
-
+            params.append(dt)
         query += " ORDER BY t.TravelDate DESC"
         cursor.execute(query, params)
         rows = cursor.fetchall()
         db.close()
         for r in rows:
             r["TravelDate"] = str(r["TravelDate"])
-        return jsonify(rows)
+        return jsonify(camel_rows(rows))
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
@@ -258,18 +672,14 @@ def get_all_travel():
 @app.route("/api/travel/log", methods=["POST"])
 def log_travel():
     data = request.get_json()
-    # Application layer date check
     if data["travelDate"] > str(date.today()):
         return jsonify({"message": "Travel date cannot be in the future"}), 400
     try:
         db = get_db()
         cursor = db.cursor()
-
-        # Generate TravelID
         cursor.execute("SELECT COUNT(*) FROM TRAVEL_RECORD")
         count = cursor.fetchone()[0]
-        travel_id = f"TRV-{count + 1:05d}"
-
+        travel_id = f"TRV{count + 1:04d}"
         cursor.execute(
             """
             INSERT INTO TRAVEL_RECORD
@@ -297,48 +707,481 @@ def log_travel():
         return jsonify({"message": str(e)}), 500
 
 
+# ══════════════════════════════════════════════════════════════
+# OFFICERS
+# ══════════════════════════════════════════════════════════════
+@app.route("/api/officers/stats")
+def officer_stats():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM IMMIGRATION_OFFICER")
+        total = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(DISTINCT BorderPostID) FROM IMMIGRATION_OFFICER")
+        posts = cursor.fetchone()[0]
+        db.close()
+        return jsonify({"total": total, "posts": posts})
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/officers")
+def get_officers():
+    q = request.args.get("q", "")
+    post = request.args.get("post", "")
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        query = """
+            SELECT o.OfficerID, o.OfficerFirstName, o.OfficerLastName,
+                   o.BorderPostID, b.BorderPostName, b.BorderType
+            FROM IMMIGRATION_OFFICER o
+            JOIN BORDER_POST b ON o.BorderPostID = b.BorderPostID
+            WHERE (o.OfficerID LIKE %s OR o.OfficerLastName LIKE %s
+                   OR o.OfficerFirstName LIKE %s)
+        """
+        params = [f"%{q}%", f"%{q}%", f"%{q}%"]
+        if post:
+            query += " AND o.BorderPostID = %s"
+            params.append(post)
+        query += " ORDER BY o.OfficerLastName ASC"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        db.close()
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/officers/register", methods=["POST"])
+def register_officer():
+    data = request.get_json()
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM IMMIGRATION_OFFICER")
+        count = cursor.fetchone()[0]
+        officer_id = f"OFF{count + 1:04d}"
+        cursor.execute(
+            """
+            INSERT INTO IMMIGRATION_OFFICER
+            (OfficerID, OfficerFirstName, OfficerLastName, BorderPostID)
+            VALUES (%s, %s, %s, %s)
+        """,
+            (officer_id, data["firstName"], data["lastName"], data["borderPostId"]),
+        )
+        db.commit()
+        db.close()
+        return jsonify({"message": "Officer registered", "officerId": officer_id}), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/officers/reassign", methods=["POST"])
+def reassign_officer():
+    data = request.get_json()
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            "UPDATE IMMIGRATION_OFFICER SET BorderPostID = %s WHERE OfficerID = %s",
+            (data["borderPostId"], data["officerId"]),
+        )
+        db.commit()
+        db.close()
+        return jsonify({"message": "Officer reassigned"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
+# BORDER
+# ══════════════════════════════════════════════════════════════
+@app.route("/api/border/stats")
+def border_stats():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM BORDER_POST")
+        total = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM BORDER_POST WHERE BorderType = 'Airport'")
+        airports = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM BORDER_POST WHERE BorderType = 'Land'")
+        land = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM BORDER_POST WHERE BorderType = 'Sea'")
+        sea = cursor.fetchone()[0]
+        db.close()
+        return jsonify({"total": total, "airports": airports, "land": land, "sea": sea})
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/border/posts")
+def get_border_posts():
+    btype = request.args.get("type", "")
+    country = request.args.get("country", "")
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        query = """
+            SELECT b.BorderPostID, b.BorderPostName, b.BorderType,
+                   b.CountryCode, c.CountryName
+            FROM BORDER_POST b
+            JOIN COUNTRY c ON b.CountryCode = c.CountryCode
+            WHERE 1=1
+        """
+        params = []
+        if btype:
+            query += " AND b.BorderType = %s"
+            params.append(btype)
+        if country:
+            query += " AND b.CountryCode = %s"
+            params.append(country)
+        query += " ORDER BY b.BorderPostName ASC"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        db.close()
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/border/deployments")
+def get_deployments():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT b.BorderPostID, b.BorderPostName, b.BorderType,
+                   COUNT(o.OfficerID) AS officerCount
+            FROM BORDER_POST b
+            LEFT JOIN IMMIGRATION_OFFICER o ON b.BorderPostID = o.BorderPostID
+            GROUP BY b.BorderPostID, b.BorderPostName, b.BorderType
+            ORDER BY officerCount DESC
+        """)
+        rows = cursor.fetchall()
+        db.close()
+        return jsonify(camel_rows(rows))
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/api/border/register", methods=["POST"])
+def register_border_post():
+    data = request.get_json()
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM BORDER_POST")
+        count = cursor.fetchone()[0]
+        post_id = f"{data['countryCode']}{count + 1:04d}"
+        cursor.execute(
+            """
+            INSERT INTO BORDER_POST (BorderPostID, BorderPostName, CountryCode, BorderType)
+            VALUES (%s, %s, %s, %s)
+        """,
+            (post_id, data["borderPostName"], data["countryCode"], data["borderType"]),
+        )
+        db.commit()
+        db.close()
+        return jsonify(
+            {"message": "Border post registered", "borderPostId": post_id}
+        ), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
+# PAYMENT
+# ══════════════════════════════════════════════════════════════
+@app.route("/api/payment/make", methods=["POST"])
+def make_payment():
+    data = request.get_json()
+    if data.get("paymentDate", str(date.today())) > str(date.today()):
+        return jsonify({"message": "Payment date cannot be in the future"}), 400
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM PAYMENT")
+        count = cursor.fetchone()[0]
+        ref_no = f"PAY{count + 1:04d}"
+        cursor.execute(
+            """
+            INSERT INTO PAYMENT
+            (PaymentRefNo, ApplicationID, NationalIDNo, Amount,
+             PaymentDate, PaymentMethod, PaymentFor, PaymentStatus)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'Confirmed')
+        """,
+            (
+                ref_no,
+                data["applicationId"],
+                data["nationalIdNo"],
+                data["amount"],
+                str(date.today()),
+                data["paymentMethod"],
+                data["paymentFor"],
+            ),
+        )
+        # Move application to Processing once paid
+        cursor.execute(
+            """
+            UPDATE APPLICATION SET ApplicationStatus = 'Processing'
+            WHERE ApplicationID = %s AND ApplicationStatus = 'Pending'
+        """,
+            (data["applicationId"],),
+        )
+        db.commit()
+        db.close()
+        return jsonify({"message": "Payment confirmed", "paymentRefNo": ref_no}), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
+# APPOINTMENT
+# ══════════════════════════════════════════════════════════════
+@app.route("/api/appointment/book", methods=["POST"])
+def book_appointment():
+    data = request.get_json()
+    if data["appointmentDate"] < str(date.today()):
+        return jsonify({"message": "Scheduled appointments cannot be in the past"}), 400
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM APPOINTMENT")
+        count = cursor.fetchone()[0]
+        apt_id = f"APT{count + 1:04d}"
+        cursor.execute(
+            """
+            INSERT INTO APPOINTMENT
+            (AppointmentID, ApplicationID, NationalIDNo, BorderPostID,
+             AppointmentDate, AppointmentStatus)
+            VALUES (%s, %s, %s, %s, %s, 'Scheduled')
+        """,
+            (
+                apt_id,
+                data["applicationId"],
+                data["nationalIdNo"],
+                data["borderPostId"],
+                data["appointmentDate"],
+            ),
+        )
+        db.commit()
+        db.close()
+        return jsonify({"message": "Appointment booked", "appointmentId": apt_id}), 201
+    except mysql.connector.IntegrityError:
+        return jsonify(
+            {"message": "An appointment already exists for this application"}
+        ), 409
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
+# VERIFICATION
+# ══════════════════════════════════════════════════════════════
+@app.route("/api/verify/passport")
+def verify_passport_doc():
+    passport_no = request.args.get("passportNo")
+    national_id = request.args.get("nationalId")
+    officer_id = request.args.get("officerId")
+    if not passport_no or not officer_id:
+        return jsonify(
+            {"valid": False, "message": "Passport number and Officer ID required"}
+        ), 400
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        query = """
+            SELECT p.PassportNo, p.NationalIDNo, p.PassportType, p.IssueDate,
+                   p.ExpiryDate, p.Nationality, p.IssuingOffice, p.PassportStatus,
+                   CONCAT(c.FirstName, ' ', c.LastName) AS CitizenName
+            FROM PASSPORT p
+            JOIN CITIZEN c ON p.NationalIDNo = c.NationalIDNo
+            WHERE p.PassportNo = %s
+        """
+        params = [passport_no]
+        if national_id:
+            query += " AND p.NationalIDNo = %s"
+            params.append(national_id)
+        cursor.execute(query, params)
+        row = cursor.fetchone()
+        if not row:
+            db.close()
+            return jsonify({"valid": False, "message": "Passport not found"})
+        if row["PassportStatus"] != "Active":
+            db.close()
+            return jsonify(
+                {
+                    "valid": False,
+                    "message": f"Passport is {row['PassportStatus']}",
+                    "passport": {
+                        "passportNo": row["PassportNo"],
+                        "citizenName": row["CitizenName"],
+                        "nationalIdNo": row["NationalIDNo"],
+                        "passportType": row["PassportType"],
+                        "issueDate": str(row["IssueDate"]),
+                        "expiryDate": str(row["ExpiryDate"]),
+                        "nationality": row["Nationality"],
+                        "issuingOffice": row["IssuingOffice"],
+                        "status": row["PassportStatus"],
+                    },
+                }
+            )
+        expiring_soon = row["ExpiryDate"] <= (date.today() + timedelta(days=180))
+        cursor.execute(
+            """
+            SELECT DepartureCountry, ArrivalCountry, TravelDate
+            FROM TRAVEL_RECORD WHERE PassportNo = %s
+            ORDER BY TravelDate DESC LIMIT 3
+        """,
+            (passport_no,),
+        )
+        recent = cursor.fetchall()
+        for t in recent:
+            t["TravelDate"] = str(t["TravelDate"])
+        log_audit(cursor, officer_id, "Viewed", "PASSPORT", passport_no)
+        db.commit()
+        db.close()
+        return jsonify(
+            {
+                "valid": True,
+                "expiringSoon": expiring_soon,
+                "message": "Expiring within 6 months — renewal recommended"
+                if expiring_soon
+                else "Passport is valid",
+                "passport": {
+                    "passportNo": row["PassportNo"],
+                    "citizenName": row["CitizenName"],
+                    "nationalIdNo": row["NationalIDNo"],
+                    "passportType": row["PassportType"],
+                    "issueDate": str(row["IssueDate"]),
+                    "expiryDate": str(row["ExpiryDate"]),
+                    "nationality": row["Nationality"],
+                    "issuingOffice": row["IssuingOffice"],
+                    "status": row["PassportStatus"],
+                },
+                "recentTravel": recent,
+            }
+        )
+    except Exception as e:
+        return jsonify({"valid": False, "message": str(e)}), 500
+
+
+@app.route("/api/verify/visa")
+def verify_visa_doc():
+    visa_id = request.args.get("visaId")
+    passport_no = request.args.get("passportNo")
+    officer_id = request.args.get("officerId")
+    if not visa_id or not officer_id:
+        return jsonify(
+            {"valid": False, "message": "Visa ID and Officer ID required"}
+        ), 400
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        query = """
+            SELECT v.VisaID, v.PassportNo, v.VisaType, v.IssueDate, v.ExpiryDate,
+                   v.VisaStatus, v.DurationOfStay, v.NumberOfEntries,
+                   CONCAT(c.FirstName, ' ', c.LastName) AS CitizenName
+            FROM VISA v
+            JOIN CITIZEN c ON v.NationalIDNo = c.NationalIDNo
+            WHERE v.VisaID = %s
+        """
+        params = [visa_id]
+        if passport_no:
+            query += " AND v.PassportNo = %s"
+            params.append(passport_no)
+        cursor.execute(query, params)
+        row = cursor.fetchone()
+        if not row:
+            db.close()
+            return jsonify({"valid": False, "message": "Visa not found"})
+        log_audit(cursor, officer_id, "Viewed", "VISA", visa_id)
+        db.commit()
+        db.close()
+        return jsonify(
+            {
+                "valid": row["VisaStatus"] == "Approved",
+                "message": "Visa is valid"
+                if row["VisaStatus"] == "Approved"
+                else f"Visa is {row['VisaStatus'].lower()}",
+                "visa": {
+                    "visaId": row["VisaID"],
+                    "citizenName": row["CitizenName"],
+                    "passportNo": row["PassportNo"],
+                    "visaType": row["VisaType"],
+                    "issueDate": str(row["IssueDate"]) if row["IssueDate"] else None,
+                    "expiryDate": str(row["ExpiryDate"]) if row["ExpiryDate"] else None,
+                    "status": row["VisaStatus"],
+                    "durationOfStay": row["DurationOfStay"],
+                    "numberOfEntries": row["NumberOfEntries"],
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify({"valid": False, "message": str(e)}), 500
+
+
+@app.route("/api/verify/citizen")
+def verify_citizen_doc():
+    national_id = request.args.get("nationalId")
+    officer_id = request.args.get("officerId")
+    if not national_id or not officer_id:
+        return jsonify(
+            {"found": False, "message": "National ID and Officer ID required"}
+        ), 400
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT NationalIDNo, FirstName, LastName, OtherName,
+                   DOB, Gender, Nationality, CountryOfBirth, Email, Phone
+            FROM CITIZEN WHERE NationalIDNo = %s
+        """,
+            (national_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            db.close()
+            return jsonify({"found": False, "message": "No citizen record found"})
+        cursor.execute(
+            """
+            SELECT PassportNo, PassportType, PassportStatus, ExpiryDate
+            FROM PASSPORT WHERE NationalIDNo = %s ORDER BY IssueDate DESC
+        """,
+            (national_id,),
+        )
+        passports = cursor.fetchall()
+        for p in passports:
+            p["ExpiryDate"] = str(p["ExpiryDate"])
+        active_count = sum(1 for p in passports if p["PassportStatus"] == "Active")
+        log_audit(cursor, officer_id, "Viewed", "CITIZEN", national_id)
+        db.commit()
+        db.close()
+        other = f" {row['OtherName']}" if row["OtherName"] else ""
+        return jsonify(
+            {
+                "found": True,
+                "message": "Citizen record found",
+                "citizen": {
+                    "nationalIdNo": row["NationalIDNo"],
+                    "fullName": f"{row['FirstName']}{other} {row['LastName']}",
+                    "dob": str(row["DOB"]),
+                    "gender": row["Gender"],
+                    "nationality": row["Nationality"],
+                    "countryOfBirth": row["CountryOfBirth"],
+                    "email": row["Email"],
+                    "phone": row["Phone"],
+                    "activePassports": active_count,
+                },
+                "passports": passports,
+            }
+        )
+    except Exception as e:
+        return jsonify({"found": False, "message": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-"""
-# Officers
-GET  /api/officers/stats
-GET  /api/officers?q=&post=
-POST /api/officers/register
-POST /api/officers/reassign
-
-# Border
-GET  /api/border/stats
-GET  /api/border/posts?type=&country=
-GET  /api/border/deployments
-POST /api/border/register
-
-# Visa
-POST /api/visa/apply
-GET  /api/visa/citizen/<national_id>
-GET  /api/visa/pending
-GET  /api/visa/all?q=&status=&type=
-POST /api/visa/process
-
-GET  /api/travel/citizen/<national_id>                  → citizen's own records
-GET  /api/travel/stats                                  → counts for stat cards
-GET  /api/travel/all?q=&entryOrExit=&mode=&from=&to=    → filtered records
-POST /api/travel/log                                    → insert new travel record
-GET  /api/passport/verify?nationalId=&passportNo=       → shared with passport page
-
-GET  /api/citizen/check/<national_id>                   → { "exists": true/false }
-POST /api/citizen/register                              → receives JSON, inserts into DB
-
-/api/passport/apply and /api/payment/ 
-    if data["applicationDate"] > str(date.today()):
-        return jsonify({"message": "Application date cannot be in the future"}), 400
-
-    if data["paymentDate"] > str(date.today()):
-        return jsonify({"message": "Payment date cannot be in the future"}), 400
-
-from datetime import date
-
-if data["appointmentDate"] < str(date.today()) and data["appointmentStatus"] == "Scheduled":
-    return jsonify({"message": "Scheduled appointments cannot be in the past"}), 400
-"""

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Document Verification | NPIMS</title>
+  <style>
+    :root {
+      --navy:#0D1F3C;--navy-mid:#162D54;--blue:#1A4A8A;--blue-light:#2E6BC4;
+      --gold:#C9A84C;--white:#FFFFFF;--off-white:#F4F6FA;--grey-light:#E2E8F2;
+      --grey:#8A97A8;--text:#1A2535;--error:#C0392B;--success:#1A7A4A;
+      --warning:#B7770D;--radius:4px;--shadow:0 2px 12px rgba(13,31,60,0.10);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--off-white);color:var(--text);min-height:100vh;}
+    header{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:64px;}
+    .header-left{display:flex;align-items:center;gap:14px;}
+    .crest{width:40px;height:40px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;}
+    .header-title{color:var(--white);font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+    .header-subtitle{color:var(--grey);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+    nav{display:flex;gap:4px;}
+    nav a{color:var(--grey);text-decoration:none;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border-radius:var(--radius);transition:color .2s,background .2s;}
+    nav a:hover{color:var(--white);background:var(--navy-mid);}
+    nav a.active{color:var(--gold);border-bottom:2px solid var(--gold);}
+    .page-header{background:var(--navy-mid);padding:24px 40px;border-bottom:1px solid rgba(201,168,76,.2);}
+    .breadcrumb{font-size:11px;color:var(--grey);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+    .breadcrumb span{color:var(--gold);}
+    .page-title{color:var(--white);font-size:22px;font-weight:700;}
+    .page-desc{color:var(--grey);font-size:13px;margin-top:4px;}
+    main{max-width:900px;margin:32px auto;padding:0 24px;}
+    .card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
+    .card-header{background:var(--navy);padding:14px 24px;display:flex;align-items:center;gap:10px;}
+    .card-header-icon{color:var(--gold);font-size:16px;}
+    .card-header h2{color:var(--white);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .card-body{padding:28px 24px;}
+    .tab-bar{display:flex;border-bottom:2px solid var(--grey-light);margin-bottom:28px;}
+    .tab{padding:10px 20px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s;}
+    .tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+    .tab-panel{display:none;}
+    .tab-panel.active{display:block;}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px;}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    .form-group.full{grid-column:1/-1;}
+    label{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--navy);}
+    label .required{color:var(--error);margin-left:3px;}
+    input,select{border:1px solid var(--grey-light);border-radius:var(--radius);padding:0 12px;font-size:14px;color:var(--text);background:var(--white);transition:border-color .2s,box-shadow .2s;outline:none;width:100%;height:40px;font-family:inherit;}
+    input:focus,select:focus{border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(46,107,196,.12);}
+    input.error{border-color:var(--error);}
+    .field-error{font-size:11px;color:var(--error);margin-top:2px;display:none;}
+    .field-error.visible{display:block;}
+    .form-actions{display:flex;justify-content:flex-end;gap:12px;padding:20px 24px;background:var(--off-white);border-top:1px solid var(--grey-light);}
+    .btn{height:40px;padding:0 24px;border-radius:var(--radius);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;border:none;transition:background .2s,transform .1s;}
+    .btn:active{transform:translateY(1px);}
+    .btn-secondary{background:var(--white);border:1px solid var(--grey-light);color:var(--text);}
+    .btn-secondary:hover{background:var(--grey-light);}
+    .btn-primary{background:var(--blue);color:var(--white);}
+    .btn-primary:hover{background:var(--blue-light);}
+    .btn-primary:disabled{background:var(--grey);cursor:not-allowed;}
+
+    /* Result panel */
+    .result-panel{display:none;border-radius:var(--radius);overflow:hidden;margin-top:20px;}
+    .result-panel.visible{display:block;}
+    .result-header{padding:16px 20px;display:flex;align-items:center;gap:12px;}
+    .result-header.valid{background:rgba(26,122,74,.10);border:1px solid rgba(26,122,74,.25);}
+    .result-header.invalid{background:rgba(192,57,43,.10);border:1px solid rgba(192,57,43,.25);}
+    .result-header.warning{background:rgba(183,119,13,.10);border:1px solid rgba(183,119,13,.25);}
+    .result-icon{font-size:28px;}
+    .result-status{font-size:16px;font-weight:700;}
+    .result-status.valid{color:var(--success);}
+    .result-status.invalid{color:var(--error);}
+    .result-status.warning{color:var(--warning);}
+    .result-sub{font-size:12px;color:var(--grey);margin-top:2px;}
+    .result-body{padding:20px;border:1px solid var(--grey-light);border-top:none;background:var(--white);}
+    .result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+    .result-field label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);display:block;margin-bottom:4px;}
+    .result-field span{font-size:14px;font-weight:500;color:var(--text);}
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+    .badge-active{background:rgba(26,74,138,.12);color:var(--blue);}
+    .badge-expired{background:rgba(138,151,168,.15);color:var(--grey);}
+    .badge-revoked{background:rgba(192,57,43,.12);color:var(--error);}
+    .badge-approved{background:rgba(26,122,74,.12);color:var(--success);}
+    .badge-pending{background:rgba(183,119,13,.12);color:var(--warning);}
+    .badge-rejected{background:rgba(192,57,43,.12);color:var(--error);}
+
+    /* History strip */
+    .history-strip{margin-top:16px;padding-top:16px;border-top:1px solid var(--grey-light);}
+    .history-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);margin-bottom:10px;}
+    .history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--grey-light);font-size:13px;}
+    .history-item:last-child{border-bottom:none;}
+
+    /* Scan bar */
+    .scan-bar{display:flex;gap:10px;align-items:flex-end;}
+    .scan-bar .form-group{flex:1;}
+    .scan-bar .btn{flex-shrink:0;margin-bottom:0;align-self:flex-end;}
+
+    .divider{display:flex;align-items:center;gap:12px;margin:24px 0;}
+    .divider span{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);white-space:nowrap;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--grey-light);}
+
+    .notice{background:rgba(26,74,138,.07);border-left:4px solid var(--blue-light);border-radius:var(--radius);padding:12px 16px;font-size:13px;color:var(--blue);margin-bottom:24px;}
+
+    .toast{position:fixed;bottom:28px;right:28px;padding:14px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:transform .3s,opacity .3s;z-index:999;}
+    .toast.show{transform:translateY(0);opacity:1;}
+    .toast.success{background:var(--success);color:var(--white);}
+    .toast.error-toast{background:var(--error);color:var(--white);}
+    .toast.info{background:var(--blue);color:var(--white);}
+
+    @media(max-width:640px){
+      header{padding:0 16px;}nav{display:none;}
+      .page-header{padding:20px 16px;}main{padding:0 12px;margin:20px auto;}
+      .form-grid{grid-template-columns:1fr;}.result-grid{grid-template-columns:1fr 1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="crest">🏛️</div>
+    <div>
+      <div class="header-title">NPIMS</div>
+      <div class="header-subtitle">National Passport & Immigration Management</div>
+    </div>
+  </div>
+  <nav>
+    <a href="citizen.html">Citizens</a>
+    <a href="passport.html">Passports</a>
+    <a href="visa.html">Visas</a>
+    <a href="officers.html">Officers</a>
+    <a href="travel.html">Travel</a>
+    <a href="border.html">Border</a>
+    <a href="verification.html" class="active">Verification</a>
+  </nav>
+</header>
+
+<div class="page-header">
+  <div class="breadcrumb">Dashboard / <span>Document Verification</span></div>
+  <div class="page-title">Document Verification</div>
+  <div class="page-desc">Verify passports, visas, and citizen records in real time.</div>
+</div>
+
+<main>
+
+  <div class="notice">
+    ℹ️ This page is for authorised immigration officers only. All verification checks are logged automatically to the audit trail.
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-icon">🔍</span>
+      <h2>Verification Centre</h2>
+    </div>
+    <div class="card-body">
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('passport')">Passport</div>
+        <div class="tab" onclick="switchTab('visa')">Visa</div>
+        <div class="tab" onclick="switchTab('citizen')">Citizen</div>
+      </div>
+
+      <!-- ── PASSPORT TAB ── -->
+      <div class="tab-panel active" id="tab-passport">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="pp-passportNo">Passport Number <span class="required">*</span></label>
+            <input type="text" id="pp-passportNo" placeholder="e.g. GH58742-28" />
+            <div class="field-error" id="pp-passportNoError">Passport number is required.</div>
+          </div>
+          <div class="form-group">
+            <label for="pp-nationalId">National ID (optional)</label>
+            <input type="text" id="pp-nationalId" placeholder="Cross-check against citizen" />
+          </div>
+          <div class="form-group">
+            <label for="pp-officerId">Officer ID <span class="required">*</span></label>
+            <input type="text" id="pp-officerId" placeholder="Your Officer ID" />
+            <div class="field-error" id="pp-officerIdError">Officer ID is required.</div>
+          </div>
+        </div>
+
+        <div class="result-panel" id="pp-result"></div>
+      </div>
+
+      <!-- ── VISA TAB ── -->
+      <div class="tab-panel" id="tab-visa">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="vv-visaId">Visa ID <span class="required">*</span></label>
+            <input type="text" id="vv-visaId" placeholder="e.g. 58742858-231" />
+            <div class="field-error" id="vv-visaIdError">Visa ID is required.</div>
+          </div>
+          <div class="form-group">
+            <label for="vv-passportNo">Passport Number (optional)</label>
+            <input type="text" id="vv-passportNo" placeholder="Cross-check against passport" />
+          </div>
+          <div class="form-group">
+            <label for="vv-officerId">Officer ID <span class="required">*</span></label>
+            <input type="text" id="vv-officerId" placeholder="Your Officer ID" />
+            <div class="field-error" id="vv-officerIdError">Officer ID is required.</div>
+          </div>
+        </div>
+
+        <div class="result-panel" id="vv-result"></div>
+      </div>
+
+      <!-- ── CITIZEN TAB ── -->
+      <div class="tab-panel" id="tab-citizen">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="cc-nationalId">National ID <span class="required">*</span></label>
+            <input type="text" id="cc-nationalId" placeholder="Citizen's National ID" />
+            <div class="field-error" id="cc-nationalIdError">National ID is required.</div>
+          </div>
+          <div class="form-group">
+            <label for="cc-officerId">Officer ID <span class="required">*</span></label>
+            <input type="text" id="cc-officerId" placeholder="Your Officer ID" />
+            <div class="field-error" id="cc-officerIdError">Officer ID is required.</div>
+          </div>
+        </div>
+
+        <div class="result-panel" id="cc-result"></div>
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+      <button class="btn btn-primary" id="verifyBtn" onclick="runVerification()">Verify Document</button>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let activeTab = 'passport';
+
+  function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['passport','visa','citizen'][i] === tab);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    clearAll();
+  }
+
+  function clearAll() {
+    document.querySelectorAll('input').forEach(i => { i.value = ''; i.classList.remove('error'); });
+    document.querySelectorAll('.field-error').forEach(e => e.classList.remove('visible'));
+    document.querySelectorAll('.result-panel').forEach(r => { r.classList.remove('visible'); r.innerHTML = ''; });
+  }
+
+  // ── Run verification based on active tab ──
+  async function runVerification() {
+    const btn = document.getElementById('verifyBtn');
+    btn.disabled = true; btn.textContent = 'Verifying...';
+    try {
+      if (activeTab === 'passport') await verifyPassport();
+      else if (activeTab === 'visa')    await verifyVisa();
+      else                              await verifyCitizen();
+    } finally {
+      btn.disabled = false; btn.textContent = 'Verify Document';
+    }
+  }
+
+  // ── PASSPORT VERIFICATION ──
+  async function verifyPassport() {
+    const passportNo = document.getElementById('pp-passportNo').value.trim();
+    const nationalId = document.getElementById('pp-nationalId').value.trim();
+    const officerId  = document.getElementById('pp-officerId').value.trim();
+    let valid = true;
+    if (!passportNo) { mark('pp-passportNo','pp-passportNoError',true); valid=false; } else mark('pp-passportNo','pp-passportNoError',false);
+    if (!officerId)  { mark('pp-officerId','pp-officerIdError',true);   valid=false; } else mark('pp-officerId','pp-officerIdError',false);
+    if (!valid) return;
+
+    try {
+      const params = new URLSearchParams({ passportNo, officerId });
+      if (nationalId) params.append('nationalId', nationalId);
+      const res  = await fetch(`/api/verify/passport?${params}`);
+      const data = await res.json();
+      renderPassportResult(data);
+    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+  }
+
+  function renderPassportResult(data) {
+    const panel = document.getElementById('pp-result');
+    panel.classList.add('visible');
+    const statusClass = data.valid
+      ? (data.expiringSoon ? 'warning' : 'valid')
+      : 'invalid';
+    const icon   = data.valid ? (data.expiringSoon ? '⚠️' : '✅') : '❌';
+    const label  = data.valid ? (data.expiringSoon ? 'Expiring Soon' : 'Valid Passport') : 'Invalid Passport';
+
+    panel.innerHTML = `
+      <div class="result-header ${statusClass}">
+        <div class="result-icon">${icon}</div>
+        <div>
+          <div class="result-status ${statusClass}">${label}</div>
+          <div class="result-sub">${data.message || ''}</div>
+        </div>
+      </div>
+      ${data.passport ? `
+      <div class="result-body">
+        <div class="result-grid">
+          <div class="result-field"><label>Passport No.</label><span>${data.passport.passportNo}</span></div>
+          <div class="result-field"><label>Citizen Name</label><span>${data.passport.citizenName}</span></div>
+          <div class="result-field"><label>National ID</label><span>${data.passport.nationalIdNo}</span></div>
+          <div class="result-field"><label>Type</label><span>${data.passport.passportType}</span></div>
+          <div class="result-field"><label>Issue Date</label><span>${data.passport.issueDate}</span></div>
+          <div class="result-field"><label>Expiry Date</label><span>${data.passport.expiryDate}</span></div>
+          <div class="result-field"><label>Nationality</label><span>${data.passport.nationality}</span></div>
+          <div class="result-field"><label>Issuing Office</label><span>${data.passport.issuingOffice}</span></div>
+          <div class="result-field"><label>Status</label><span class="badge badge-${data.passport.status.toLowerCase()}">${data.passport.status}</span></div>
+        </div>
+        ${data.recentTravel && data.recentTravel.length ? `
+        <div class="history-strip">
+          <div class="history-label">Recent Travel (last 3)</div>
+          ${data.recentTravel.map(t => `
+            <div class="history-item">
+              <span>${t.departureCountry} → ${t.arrivalCountry}</span>
+              <span style="color:var(--grey)">${t.travelDate}</span>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>` : ''}
+    `;
+  }
+
+  // ── VISA VERIFICATION ──
+  async function verifyVisa() {
+    const visaId    = document.getElementById('vv-visaId').value.trim();
+    const passportNo= document.getElementById('vv-passportNo').value.trim();
+    const officerId = document.getElementById('vv-officerId').value.trim();
+    let valid = true;
+    if (!visaId)    { mark('vv-visaId','vv-visaIdError',true);       valid=false; } else mark('vv-visaId','vv-visaIdError',false);
+    if (!officerId) { mark('vv-officerId','vv-officerIdError',true);  valid=false; } else mark('vv-officerId','vv-officerIdError',false);
+    if (!valid) return;
+
+    try {
+      const params = new URLSearchParams({ visaId, officerId });
+      if (passportNo) params.append('passportNo', passportNo);
+      const res  = await fetch(`/api/verify/visa?${params}`);
+      const data = await res.json();
+      renderVisaResult(data);
+    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+  }
+
+  function renderVisaResult(data) {
+    const panel = document.getElementById('vv-result');
+    panel.classList.add('visible');
+    const statusClass = data.valid ? 'valid' : 'invalid';
+    const icon  = data.valid ? '✅' : '❌';
+    const label = data.valid ? 'Valid Visa' : 'Invalid Visa';
+
+    panel.innerHTML = `
+      <div class="result-header ${statusClass}">
+        <div class="result-icon">${icon}</div>
+        <div>
+          <div class="result-status ${statusClass}">${label}</div>
+          <div class="result-sub">${data.message || ''}</div>
+        </div>
+      </div>
+      ${data.visa ? `
+      <div class="result-body">
+        <div class="result-grid">
+          <div class="result-field"><label>Visa ID</label><span>${data.visa.visaId}</span></div>
+          <div class="result-field"><label>Citizen Name</label><span>${data.visa.citizenName}</span></div>
+          <div class="result-field"><label>Visa Type</label><span>${data.visa.visaType}</span></div>
+          <div class="result-field"><label>Issue Date</label><span>${data.visa.issueDate || '—'}</span></div>
+          <div class="result-field"><label>Expiry Date</label><span>${data.visa.expiryDate || '—'}</span></div>
+          <div class="result-field"><label>Duration of Stay</label><span>${data.visa.durationOfStay ? data.visa.durationOfStay + ' months' : '—'}</span></div>
+          <div class="result-field"><label>Entries</label><span>${data.visa.numberOfEntries || '—'}</span></div>
+          <div class="result-field"><label>Passport No.</label><span>${data.visa.passportNo || '—'}</span></div>
+          <div class="result-field"><label>Status</label><span class="badge badge-${data.visa.status.toLowerCase()}">${data.visa.status}</span></div>
+        </div>
+      </div>` : ''}
+    `;
+  }
+
+  // ── CITIZEN VERIFICATION ──
+  async function verifyCitizen() {
+    const nationalId = document.getElementById('cc-nationalId').value.trim();
+    const officerId  = document.getElementById('cc-officerId').value.trim();
+    let valid = true;
+    if (!nationalId) { mark('cc-nationalId','cc-nationalIdError',true); valid=false; } else mark('cc-nationalId','cc-nationalIdError',false);
+    if (!officerId)  { mark('cc-officerId','cc-officerIdError',true);   valid=false; } else mark('cc-officerId','cc-officerIdError',false);
+    if (!valid) return;
+
+    try {
+      const res  = await fetch(`/api/verify/citizen?nationalId=${nationalId}&officerId=${officerId}`);
+      const data = await res.json();
+      renderCitizenResult(data);
+    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+  }
+
+  function renderCitizenResult(data) {
+    const panel = document.getElementById('cc-result');
+    panel.classList.add('visible');
+    const statusClass = data.found ? 'valid' : 'invalid';
+    const icon  = data.found ? '✅' : '❌';
+    const label = data.found ? 'Citizen Found' : 'Citizen Not Found';
+
+    panel.innerHTML = `
+      <div class="result-header ${statusClass}">
+        <div class="result-icon">${icon}</div>
+        <div>
+          <div class="result-status ${statusClass}">${label}</div>
+          <div class="result-sub">${data.message || ''}</div>
+        </div>
+      </div>
+      ${data.citizen ? `
+      <div class="result-body">
+        <div class="result-grid">
+          <div class="result-field"><label>National ID</label><span>${data.citizen.nationalIdNo}</span></div>
+          <div class="result-field"><label>Full Name</label><span>${data.citizen.fullName}</span></div>
+          <div class="result-field"><label>Date of Birth</label><span>${data.citizen.dob}</span></div>
+          <div class="result-field"><label>Gender</label><span>${data.citizen.gender}</span></div>
+          <div class="result-field"><label>Nationality</label><span>${data.citizen.nationality}</span></div>
+          <div class="result-field"><label>Country of Birth</label><span>${data.citizen.countryOfBirth}</span></div>
+          <div class="result-field"><label>Email</label><span>${data.citizen.email}</span></div>
+          <div class="result-field"><label>Phone</label><span>${data.citizen.phone}</span></div>
+          <div class="result-field"><label>Active Passports</label><span>${data.citizen.activePassports}</span></div>
+        </div>
+        ${data.passports && data.passports.length ? `
+        <div class="history-strip">
+          <div class="history-label">Passport Records</div>
+          ${data.passports.map(p => `
+            <div class="history-item">
+              <span><strong>${p.passportNo}</strong> — ${p.passportType}</span>
+              <span><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span> &nbsp; expires ${p.expiryDate}</span>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>` : ''}
+    `;
+  }
+
+  function mark(inputId, errId, hasError) {
+    document.getElementById(inputId).classList.toggle('error', hasError);
+    document.getElementById(errId).classList.toggle('visible', hasError);
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+</script>
+</body>
+</html>
