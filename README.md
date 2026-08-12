@@ -75,10 +75,13 @@ CREATE DATABASE npims;
 USE npims;
 
 -- Run schema file
-SOURCE schema.sql;
+SOURCE npims_schema.sql;
 
 -- Populate with sample data
-SOURCE seed.sql;
+SOURCE npims_seed_data.sql;
+
+-- Advanced function
+SOURCE npims_advanced_func.sql
 ```
 
 ---
