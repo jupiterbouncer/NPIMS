@@ -561,5 +561,61 @@ END //
 DELIMITER ;
 
 -- ============================================================
+-- TRIGGERS FOR AUDIT LOGGING
+-- ============================================================
+DELIMITER //
+
+-- Log every new passport creation
+CREATE TRIGGER trg_audit_passport_insert
+AFTER INSERT ON PASSPORT
+FOR EACH ROW
+BEGIN
+    INSERT INTO AUDIT_LOG (OfficerID, ActionType, TableAffected, RecordID)
+    SELECT a.OfficerID, 'Created', 'PASSPORT', NEW.PassportNo
+    FROM APPLICATION a
+    WHERE a.ApplicationID = NEW.ApplicationID;
+END //
+
+-- Log every passport status change
+CREATE TRIGGER trg_audit_passport_update
+AFTER UPDATE ON PASSPORT
+FOR EACH ROW
+BEGIN
+    INSERT INTO AUDIT_LOG (OfficerID, ActionType, TableAffected, RecordID)
+    SELECT a.OfficerID, 'Updated', 'PASSPORT', NEW.PassportNo
+    FROM APPLICATION a
+    WHERE a.ApplicationID = NEW.ApplicationID;
+END //
+
+-- Log every visa decision
+CREATE TRIGGER trg_audit_visa_update
+AFTER UPDATE ON VISA
+FOR EACH ROW
+BEGIN
+    INSERT INTO AUDIT_LOG (OfficerID, ActionType, TableAffected, RecordID)
+    VALUES (NEW.OfficerID, 'Updated', 'VISA', NEW.VisaID);
+END //
+
+-- Log every new travel record
+CREATE TRIGGER trg_audit_travel_insert
+AFTER INSERT ON TRAVEL_RECORD
+FOR EACH ROW
+BEGIN
+    INSERT INTO AUDIT_LOG (OfficerID, ActionType, TableAffected, RecordID)
+    VALUES (NEW.OfficerID, 'Created', 'TRAVEL_RECORD', NEW.TravelID);
+END //
+
+-- Log every new citizen registration
+CREATE TRIGGER trg_audit_citizen_insert
+AFTER INSERT ON CITIZEN
+FOR EACH ROW
+BEGIN
+    INSERT INTO AUDIT_LOG (OfficerID, ActionType, TableAffected, RecordID)
+    VALUES ('OF00001', 'Created', 'CITIZEN', NEW.NationalIDNo);
+END //
+
+DELIMITER ;
+
+-- ============================================================
 -- END OF DDL
 -- ============================================================

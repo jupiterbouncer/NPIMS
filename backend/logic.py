@@ -171,9 +171,18 @@ def passport_apply():
     try:
         db = get_db()
         cursor = db.cursor()
+
+        # Auto assign first available officer
+        cursor.execute("SELECT OfficerID FROM IMMIGRATION_OFFICER LIMIT 1")
+        officer_row = cursor.fetchone()
+        if not officer_row:
+            return jsonify({"message": "No officers available to process application"}), 503
+        officer_id = officer_row[0]
+
         cursor.execute("SELECT COUNT(*) FROM APPLICATION")
         count = cursor.fetchone()[0]
         app_id = f"APP{count + 1:04d}"
+        
         cursor.execute(
             """
             INSERT INTO APPLICATION
@@ -184,16 +193,14 @@ def passport_apply():
             (
                 app_id,
                 data["nationalIdNo"],
-                data["officerId"],
+                officer_id,
                 data["applicationType"],
                 str(date.today()),
             ),
         )
         db.commit()
         db.close()
-        return jsonify(
-            {"message": "Application submitted", "applicationId": app_id}
-        ), 201
+        return jsonify({"message": "Application submitted", "applicationId": app_id}), 201
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
@@ -222,20 +229,25 @@ def get_applications(national_id):
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
-
 @app.route("/api/passport/pending")
 def get_pending():
+    officer_id = request.args.get("officerId", "")
     try:
         db = get_db()
         cursor = db.cursor(dictionary=True)
-        cursor.execute("""
+        query = """
             SELECT ApplicationID, NationalIDNo, ApplicationType,
                    ApplicationStatus, ApplicationDate
             FROM APPLICATION
             WHERE ApplicationStatus = 'Pending'
               AND ApplicationType IN ('New Passport', 'Renewal')
-            ORDER BY ApplicationDate ASC
-        """)
+        """
+        params = []
+        if officer_id:
+            query += " AND OfficerID = %s"
+            params.append(officer_id)
+        query += " ORDER BY ApplicationDate ASC"
+        cursor.execute(query, params)
         rows = cursor.fetchall()
         db.close()
         for r in rows:

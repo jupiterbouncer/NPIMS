@@ -395,9 +395,9 @@
               <label for="appType">Application Type <span class="required">*</span></label>
               <select id="appType" onchange="handleAppType()">
                 <option value="">— Select Type —</option>
-                <option value="new_passport">New Passport</option>
-                <option value="renewal">Renewal</option>
-                <option value="visa">Visa</option>
+                <option value="New Passport">New Passport</option>
+                <option value="Renewal">Renewal</option>
+                <option value="Visa">Visa</option>
               </select>
               <div class="field-error" id="appTypeError">Please select an application type.</div>
             </div>
@@ -452,6 +452,10 @@
         <button class="btn btn-secondary btn-sm" onclick="loadMyApplications()">↻ Refresh</button>
       </div>
       <div class="table-wrap">
+        <div class="search-bar">
+          <input type="text" id="myAppsNationalId" placeholder="Enter your National ID" />
+          <button class="btn btn-primary" onclick="loadMyApplications()">Load Applications</button>
+        </div>
         <table>
           <thead>
             <tr>
@@ -652,9 +656,9 @@
       passportType:       document.getElementById('passportType').value,
       existingPassportNo: document.getElementById('existingPassportNo').value.trim() || null,
       notes:              document.getElementById('appNotes').value.trim() || null,
-      officerID:          'OF00001' // For demo purposes; in real app, this would be assigned by the system 
+     // For demo purposes as in the real app, officerid would be assigned by the system 
     };
-
+ 
     try {
       const res = await fetch('/api/passport/apply', {
         method: 'POST',
@@ -686,8 +690,11 @@
 
   // ── Citizen: load my applications ──
   async function loadMyApplications() {
-    const nationalId = document.getElementById('appNationalId').value.trim();
-    if (!nationalId) return;
+    const nationalId = document.getElementById('myAppsNationalId').value.trim();
+    if (!nationalId) {
+      showToast('Enter your National ID.', 'info')
+      return;
+    }
     try {
       const res = await fetch(`/api/passport/applications/${nationalId}`);
       const data = await res.json();
@@ -698,10 +705,10 @@
       }
       tbody.innerHTML = data.map(a => `
         <tr>
-          <td>${a.applicationId}</td>
+          <td>${a.applicationID}</td>
           <td>${formatType(a.applicationType)}</td>
-          <td>${a.submissionDate}</td>
-          <td><span class="badge badge-${a.status}">${a.status}</span></td>
+          <td>${a.applicationDate}</td>
+          <td><span class="badge badge-${a.applicationStatus}">${a.applicationStatus}</span></td>
           <td>${a.passportNo || '—'}</td>
         </tr>
       `).join('');
@@ -739,11 +746,11 @@
       tbody.innerHTML = data.map(p => `
         <tr>
           <td><strong>${p.passportNo}</strong></td>
-          <td>${p.nationalIdNo}</td>
+          <td>${p.nationalIDNo}</td>
           <td>${p.firstName} ${p.lastName}</td>
           <td>${p.issueDate}</td>
           <td>${p.expiryDate}</td>
-          <td><span class="badge badge-${p.status}">${p.status}</span></td>
+          <td><span class="badge badge-${p.status}">${p.passportStatus}</span></td>
           <td><button class="btn btn-secondary btn-sm" onclick="viewDetail(${JSON.stringify(p).replace(/"/g,"'")})">View</button></td>
         </tr>
       `).join('');
@@ -755,7 +762,7 @@
   // ── Officer: load pending queue ──
   async function loadPendingApplications() {
     try {
-      const res = await fetch('/api/passport/pending');
+      const res = await fetch(`/api/passport/pending?officerId=${sessionOfficer}`);
       const data = await res.json();
       const tbody = document.getElementById('pendingBody');
       if (!data.length) {
@@ -764,10 +771,10 @@
       }
       tbody.innerHTML = data.map(a => `
         <tr>
-          <td><strong>${a.applicationId}</strong></td>
-          <td>${a.nationalIdNo}</td>
+          <td><strong>${a.applicationID}</strong></td>
+          <td>${a.nationalIDNo}</td>
           <td>${formatType(a.applicationType)}</td>
-          <td>${a.submissionDate}</td>
+          <td>${a.applicationDate}</td>
           <td><span class="badge badge-pending">Pending</span></td>
           <td>
             <button class="btn btn-secondary btn-sm" onclick="reviewApplication(${JSON.stringify(a).replace(/"/g,"'")})">Review</button>
@@ -784,11 +791,11 @@
     document.getElementById('detailTitle').textContent = `Passport — ${p.passportNo}`;
     document.getElementById('detailGrid').innerHTML = `
       <div class="detail-field"><label>Passport No.</label><span>${p.passportNo}</span></div>
-      <div class="detail-field"><label>National ID</label><span>${p.nationalIdNo}</span></div>
+      <div class="detail-field"><label>National ID</label><span>${p.nationalIDNo}</span></div>
       <div class="detail-field"><label>Citizen Name</label><span>${p.firstName} ${p.lastName}</span></div>
       <div class="detail-field"><label>Issue Date</label><span>${p.issueDate}</span></div>
       <div class="detail-field"><label>Expiry Date</label><span>${p.expiryDate}</span></div>
-      <div class="detail-field"><label>Status</label><span class="badge badge-${p.status}">${p.status}</span></div>
+      <div class="detail-field"><label>Status</label><span class="badge badge-${p.passportStatus}">${p.passportStatus}</span></div>
       <div class="detail-field"><label>Type</label><span>${p.passportType || '—'}</span></div>
     `;
     document.getElementById('detailActions').innerHTML = `
@@ -800,20 +807,20 @@
 
   // ── Officer: review pending application ──
   function reviewApplication(a) {
-    document.getElementById('detailTitle').textContent = `Review Application — ${a.applicationId}`;
+    document.getElementById('detailTitle').textContent = `Review Application for ${a.applicationID}`;
     document.getElementById('detailGrid').innerHTML = `
-      <div class="detail-field"><label>Application ID</label><span>${a.applicationId}</span></div>
-      <div class="detail-field"><label>National ID</label><span>${a.nationalIdNo}</span></div>
+      <div class="detail-field"><label>Application ID</label><span>${a.applicationID}</span></div>
+      <div class="detail-field"><label>National ID</label><span>${a.nationalIDNo}</span></div>
       <div class="detail-field"><label>Type</label><span>${formatType(a.applicationType)}</span></div>
       <div class="detail-field"><label>Passport Type</label><span>${a.passportType || '—'}</span></div>
-      <div class="detail-field"><label>Submitted</label><span>${a.submissionDate}</span></div>
+      <div class="detail-field"><label>Submitted</label><span>${a.applicationDate}</span></div>
       <div class="detail-field"><label>Status</label><span class="badge badge-pending">Pending</span></div>
       ${a.notes ? `<div class="detail-field full"><label>Notes</label><span>${a.notes}</span></div>` : ''}
     `;
     document.getElementById('detailActions').innerHTML = `
       <textarea id="rejectionReason" placeholder="Rejection reason (required if rejecting)..."></textarea>
-      <button class="btn btn-success btn-sm" onclick="processApplication('${a.applicationId}', 'approved')">Approve</button>
-      <button class="btn btn-danger btn-sm"  onclick="processApplication('${a.applicationId}', 'rejected')">Reject</button>
+      <button class="btn btn-success btn-sm" onclick="processApplication('${a.applicationID}', 'approved')">Approve</button>
+      <button class="btn btn-danger btn-sm"  onclick="processApplication('${a.applicationID}', 'rejected')">Reject</button>
     `;
     document.getElementById('detailPanel').classList.add('visible');
     document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth' });
@@ -829,7 +836,7 @@
       const res = await fetch(`/api/passport/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationId, decision, reason: reason || null })
+        body: JSON.stringify({ applicationId, decision, reason: reason || null, officerId: sessionOfficer })
       });
       const data = await res.json();
       if (res.ok) {
