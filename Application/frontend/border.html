@@ -156,30 +156,6 @@
             <label for="borderCountry">Country <span class="required">*</span></label>
             <select id="borderCountry">
               <option value="">— Select Country —</option>
-                <option value="GHA">Ghana</option>
-                <option value="NGA">Nigeria</option>
-                <option value="ZAF">South Africa</option>
-                <option value="KEN">Kenya</option>
-                <option value="CIV">Ivory Coast</option>
-                <option value="TGO">Togo</option>
-                <option value="BFA">Burkina Faso</option>
-                <option value="SEN">Senegal</option>
-                <option value="MAR">Morocco</option>
-                <option value="EGY">Egypt</option>
-                <option value="GBR">United Kingdom</option>
-                <option value="FRA">France</option>
-                <option value="DEU">Germany</option>
-                <option value="ESP">Spain</option>
-                <option value="ITA">Italy</option>
-                <option value="USA">United States</option>
-                <option value="CAN">Canada</option>
-                <option value="BRA">Brazil</option>
-                <option value="CHN">China</option>
-                <option value="JPN">Japan</option>
-                <option value="IND">India</option>
-                <option value="ARE">United Arab Emirates</option>
-                <option value="QAT">Qatar</option>
-                <option value="AUS">Australia</option>
             </select>
             <div class="field-error" id="borderCountryError">Country is required.</div>
           </div>
@@ -220,10 +196,6 @@
       </select>
       <select id="filterCountry" onchange="loadBorderPosts()">
         <option value="">All Countries</option>
-        <option value="GHA">Ghana</option>
-        <option value="NGA">Nigeria</option>
-        <option value="ZAF">South Africa</option>
-        <option value="KEN">Kenya</option>
       </select>
     </div>
     <div class="posts-grid" id="postsGrid">
@@ -258,6 +230,36 @@
 
 <script>
   const typeIcon = { Airport:'✈️', Land:'🛣️', Sea:'⚓' };
+
+  async function loadCountries(...selectIds) {
+    const countries = await fetch('/api/countries').then(r => r.json());
+
+    selectIds.forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">— Select Country —</option>';
+
+      countries.forEach(c => {
+        select.innerHTML +=
+        ` <option value="${c.countryCode}">${c.countryName}</option>`;
+      });
+    });
+  }
+
+  async function loadBorderPosts(...selectIds) {
+    const posts = await fetch('/api/border-posts').then(r => r.json());
+
+    selectIds.forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">— Select Border Post —</option>';
+
+      posts.forEach(p => {
+        select.innerHTML +=
+          `<option value="${p.borderPostID}">
+            ${p.borderPostName} (${p.countryCode})
+          </option>`;
+      });
+    });
+  }
 
   async function loadStats() {
     try {
@@ -367,6 +369,7 @@
   }
 
   loadStats(); loadBorderPosts(); loadDeployments();
+  loadCountries('borderCountry'); loadBorderPosts('filterBorderPost');
 </script>
 </body>
 </html>

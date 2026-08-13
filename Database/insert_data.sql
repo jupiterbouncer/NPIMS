@@ -2,13 +2,13 @@
 -- Generated to match the supplied DDL and foreign-key order.
 USE NPIMS;
 
--- 1. COUNTRY — 30 rows
+-- 1. COUNTRY - 30 rows
 INSERT INTO COUNTRY (CountryCode, CountryName, Continent, VisaRequired, IsActive) VALUES
 ('GHA','Ghana','Africa','No',1),
 ('NGA','Nigeria','Africa','Yes',1),
 ('ZAF','South Africa','Africa','Yes',1),
 ('KEN','Kenya','Africa','Yes',1),
-('CIV','Cote d'Ivoire','Africa','Yes',1),
+('CIV','Ivory Coast','Africa','Yes',1),
 ('TGO','Togo','Africa','No',1),
 ('BFA','Burkina Faso','Africa','Yes',1),
 ('SEN','Senegal','Africa','Yes',1),
@@ -35,6 +35,7 @@ INSERT INTO COUNTRY (CountryCode, CountryName, Continent, VisaRequired, IsActive
 ('TUR','Turkey','Asia','Yes',1),
 ('NLD','Netherlands','Europe','Yes',1);
 
+-- Delete any leftover country values
 DELETE FROM COUNTRY c
 WHERE c.CountryCode NOT IN (
     'GHA','NGA','ZAF','KEN','CIV','TGO','BFA','SEN','MAR','EGY',
@@ -62,7 +63,7 @@ AND NOT EXISTS (
        OR tr.ArrivalCountry = c.CountryCode
 );
 
--- 2. CITIZEN — 30 rows
+-- 2. CITIZEN - 30 rows
 INSERT INTO CITIZEN (NationalIDNo, FirstName, LastName, OtherName, DOB, CountryOfBirth, Gender, Nationality, Address, Phone, Email) VALUES
 ('GH000001','Kwame','Mensah','Kofi','1980-01-01','GHA','Male','Ghanaian','East Legon, Accra','+233241000000','kwame.mensah1@example.com'),
 ('GH000002','Ama','Owusu',NULL,'1981-02-02','GHA','Female','Ghanaian','Adenta, Accra','+233241000001','ama.owusu2@example.com'),
@@ -95,7 +96,7 @@ INSERT INTO CITIZEN (NationalIDNo, FirstName, LastName, OtherName, DOB, CountryO
 ('GH000029','Kelvin','Asiedu',NULL,'1986-05-02','GHA','Male','Ghanaian','Airport Residential, Accra','+233241000028','kelvin.asiedu29@example.com'),
 ('GH000030','Angela','Bonsu','Sena','1987-06-03','GHA','Female','Ghanaian','Berekuso','+233241000029','angela.bonsu30@example.com');
 
--- 3. BORDER_POST — 30 rows
+-- 3. BORDER_POST - 30 rows
 INSERT INTO BORDER_POST (BorderPostID, BorderPostName, CountryCode, BorderType) VALUES
 ('BP00001','Kotoka International Airport','GHA','Airport'),
 ('BP00002','Aflao Border Post','GHA','Land'),
@@ -128,7 +129,7 @@ INSERT INTO BORDER_POST (BorderPostID, BorderPostName, CountryCode, BorderType) 
 ('BP00029','Narita Airport','JPN','Airport'),
 ('BP00030','Sydney Airport','AUS','Airport');
 
--- 4. IMMIGRATION_OFFICER — 30 rows
+-- 4. IMMIGRATION_OFFICER - 30 rows
 INSERT INTO IMMIGRATION_OFFICER (OfficerID, OfficerFirstName, OfficerLastName, BorderPostID) VALUES
 ('OF00001','Kwaku','Adu','BP00001'),
 ('OF00002','Afia','Frempong','BP00002'),
@@ -161,7 +162,7 @@ INSERT INTO IMMIGRATION_OFFICER (OfficerID, OfficerFirstName, OfficerLastName, B
 ('OF00029','Lawrence','Obeng','BP00029'),
 ('OF00030','Helena','Otoo','BP00030');
 
--- 5. APPLICATION — 60 rows (30 passport/renewal + 30 visa)
+-- 5. APPLICATION - 60 rows (30 passport/renewal + 30 visa)
 INSERT INTO APPLICATION (ApplicationID, NationalIDNo, OfficerID, ApplicationType, ApplicationStatus, ApplicationDate, RejectionReason) VALUES
 ('AP00001','GH000001','OF00001','New Passport','Approved','2024-01-01',NULL),
 ('AP00002','GH000002','OF00002','New Passport','Approved','2024-01-11',NULL),
@@ -224,7 +225,7 @@ INSERT INTO APPLICATION (ApplicationID, NationalIDNo, OfficerID, ApplicationType
 ('AP00059','GH000029','OF00004','Visa','Rejected','2025-09-14','Insufficient supporting documents'),
 ('AP00060','GH000030','OF00005','Visa','Processing','2025-09-23',NULL);
 
--- 6. PAYMENT — 30 rows
+-- 6. PAYMENT - 30 rows
 INSERT INTO PAYMENT (PaymentRefNo, ApplicationID, NationalIDNo, Amount, PaymentDate, PaymentMethod, PaymentFor, PaymentStatus) VALUES
 ('PY00001','AP00001','GH000001','500.0','2024-01-02','Cash Deposit','Passport Application','Confirmed'),
 ('PY00002','AP00002','GH000002','500.0','2024-01-12','E-Transfer','Passport Application','Confirmed'),
@@ -257,7 +258,7 @@ INSERT INTO PAYMENT (PaymentRefNo, ApplicationID, NationalIDNo, Amount, PaymentD
 ('PY00029','AP00029','GH000029','350.0','2024-10-08','E-Transfer','Renewal','Confirmed'),
 ('PY00030','AP00030','GH000030','350.0','2024-10-18','E-Transfer','Renewal','Confirmed');
 
--- 7. APPOINTMENT — 30 rows
+-- 7. APPOINTMENT - 30 rows
 INSERT INTO APPOINTMENT (AppointmentID, ApplicationID, NationalIDNo, BorderPostID, AppointmentDate, AppointmentStatus) VALUES
 ('AT00001','AP00001','GH000001','BP00001','2024-02-01','Completed'),
 ('AT00002','AP00002','GH000002','BP00002','2024-02-11','Completed'),
@@ -290,7 +291,7 @@ INSERT INTO APPOINTMENT (AppointmentID, ApplicationID, NationalIDNo, BorderPostI
 ('AT00029','AP00029','GH000029','BP00009','2024-11-07','Completed'),
 ('AT00030','AP00030','GH000030','BP00010','2024-11-17','Completed');
 
--- 8. PASSPORT — 30 rows
+-- 8. PASSPORT - 30 rows
 INSERT INTO PASSPORT (PassportNo, NationalIDNo, ApplicationID, PassportType, IssueDate, ExpiryDate, Nationality, IssuingOffice, PassportStatus) VALUES
 ('GH00000001','GH000001','AP00001','Ordinary','2024-03-01','2029-03-01','Ghanaian','Passport Office Accra','Active'),
 ('GH00000002','GH000002','AP00002','Ordinary','2024-03-09','2029-03-09','Ghanaian','Passport Office Accra','Active'),
@@ -323,7 +324,7 @@ INSERT INTO PASSPORT (PassportNo, NationalIDNo, ApplicationID, PassportType, Iss
 ('GH00000029','GH000029','AP00029','Ordinary','2024-10-11','2029-10-11','Ghanaian','Passport Office Accra','Active'),
 ('GH00000030','GH000030','AP00030','Ordinary','2024-10-19','2029-10-19','Ghanaian','Passport Office Accra','Active');
 
--- 9. VISA — 30 rows
+-- 9. VISA - 30 rows
 INSERT INTO VISA (VisaID, NationalIDNo, PassportNo, ApplicationID, OfficerID, VisaType, IssueDate, ExpiryDate, VisaStatus, DurationOfStay, NumberOfEntries) VALUES
 ('VS0000000001','GH000001','GH00000001','AP00031','OF00006','Visitor','2025-02-01','2025-07-31','Approved','6','Single'),
 ('VS0000000002','GH000002','GH00000002','AP00032','OF00007','Student','2025-02-08','2026-02-08','Approved','12','Multiple'),
@@ -356,7 +357,7 @@ INSERT INTO VISA (VisaID, NationalIDNo, PassportNo, ApplicationID, OfficerID, Vi
 ('VS0000000029','GH000029',NULL,'AP00059','OF00004','Transit',NULL,NULL,'Rejected',NULL,NULL),
 ('VS0000000030','GH000030','GH00000030','AP00060','OF00005','Diplomatic',NULL,NULL,'Processing',NULL,NULL);
 
--- 10. TRAVEL_RECORD — 30 rows
+-- 10. TRAVEL_RECORD - 30 rows
 INSERT INTO TRAVEL_RECORD (TravelID, NationalIDNo, PassportNo, OfficerID, BorderPostID, DepartureCountry, ArrivalCountry, TravelDate, EntryOrExit, ModeOfTravel) VALUES
 ('TR00001','GH000001','GH00000001','OF00001','BP00001','GHA','GBR','2025-06-01','exit','Air'),
 ('TR00002','GH000002','GH00000002','OF00002','BP00002','NGA','GHA','2025-06-13','entry','Land'),
@@ -389,7 +390,7 @@ INSERT INTO TRAVEL_RECORD (TravelID, NationalIDNo, PassportNo, OfficerID, Border
 ('TR00029','GH000029','GH00000029','OF00009','BP00009','GHA','CIV','2026-05-03','exit','Air'),
 ('TR00030','GH000030','GH00000030','OF00010','BP00010','TGO','GHA','2026-05-15','entry','Land');
 
--- 11. AUDIT_LOG — 30 rows
+-- 11. AUDIT_LOG - 30 rows
 INSERT INTO AUDIT_LOG (OfficerID, ActionType, TableAffected, RecordID, ActionTimestamp) VALUES
 ('OF00001','Created','TRAVEL_RECORD','TR00001','2025-06-01 10:30:00'),
 ('OF00002','Created','TRAVEL_RECORD','TR00002','2025-06-13 10:30:00'),

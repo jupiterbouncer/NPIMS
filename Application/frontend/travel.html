@@ -257,15 +257,6 @@
               <label for="borderPostId">Border Post <span class="required">*</span></label>
               <select id="borderPostId">
                 <option value="">— Select Border Post —</option>
-                <option value="BP00001">Kotoka International Airport (GHA)</option>
-                <option value="BP00002">Aflao Border Post (GHA)</option>
-                <option value="BP00003">Tema Harbour (GHA)</option>
-                <option value="BP00004">Paga Border Post (GHA)</option>
-                <option value="BP00005">Elubo Border Post (GHA)</option>
-                <option value="BP00008">Kumasi Airport (GHA)</option>
-                <option value="BP00009">Tamale Airport (GHA)</option>
-                <option value="BP00013">Murtala Muhammed Airport (NGA)</option>
-                <option value="BP00014">Nnamdi Azikiwe Airport (NGA)</option>
               </select>
               <div class="field-error" id="borderPostError">Border post is required.</div>
             </div>
@@ -335,6 +326,21 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  async function loadBorderPosts(...selectIds) {
+    const posts = await fetch('/api/border-posts').then(r => r.json());
+
+    selectIds.forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">— Select Border Post —</option>';
+
+      posts.forEach(p => {
+        select.innerHTML +=
+          `<option value="${p.borderPostID}">
+            ${p.borderPostName} (${p.countryCode})
+          </option>`;
+      });
+    });
+  }
   document.getElementById('travelDate').max = new Date().toISOString().split('T')[0];
 
   function switchRole(role) {
@@ -522,6 +528,7 @@
     setTimeout(()=>toast.classList.remove('show'),3500);
   }
   loadCountries('departureCountry', 'arrivalCountry');
+  loadBorderPosts('borderPostId');
 </script>
 </body>
 </html>

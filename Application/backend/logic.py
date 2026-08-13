@@ -18,7 +18,7 @@ def camel_rows(rows):
     return [{to_camel(k): v for k, v in row.items()} for row in rows]
 
 BASE_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "pages"
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend"
 )
 app = Flask(__name__)
 CORS(app)
@@ -60,6 +60,21 @@ def get_countries():
     db.close()
     return jsonify(camel_rows(rows))
 
+@app.route("/api/border-posts")
+def get_border_posts_simple():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT BorderPostID, BorderPostName, CountryCode
+        FROM BORDER_POST
+        ORDER BY BorderPostName
+    """)
+
+    rows = cursor.fetchall()
+    db.close()
+
+    return jsonify(camel_rows(rows))
 
 # ── STATIC FILES ───────────────────────────────────────────────
 @app.route("/")
@@ -151,8 +166,9 @@ def verify_passport():
         cursor = db.cursor(dictionary=True)
         cursor.execute(
             """
-            SELECT p.PassportNo, c.NationalIDNo, CONCAT(c.FirstName, ' ', c.LastName), 
-                    p.IssueDate, p.ExpiryDate, p.PassportStatus
+            SELECT p.PassportNo, c.NationalIDNo,
+                c.FirstName, c.LastName,
+                p.IssueDate, p.ExpiryDate, p.PassportStatus
             FROM PASSPORT p
             JOIN CITIZEN c ON p.NationalIDNo = c.NationalIDNo
             WHERE p.NationalIDNo = %s AND p.PassportNo = %s
