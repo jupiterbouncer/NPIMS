@@ -170,6 +170,7 @@ Then open the local Flask address shown in the terminal, typically:
 
 ```text
 http://127.0.0.1:5000
+```
 
 ---
 
@@ -185,7 +186,7 @@ You should only need to:
 6. Run `python backend/logic.py`.
 
 No source-code changes should be required for another user to run the project.
-```
+
 
 ## Team
 
