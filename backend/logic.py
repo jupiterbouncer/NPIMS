@@ -3,9 +3,11 @@ import re
 from datetime import date, datetime, timedelta
 
 import mysql.connector
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+load_dotenv()
 
 def to_camel(name):
     s = re.sub(r'([A-Z])', r'_\1', name).lower().lstrip('_')
@@ -22,13 +24,12 @@ app = Flask(__name__)
 CORS(app)
 
 DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "root",
-    "password": "demiladesubair",
-    "database": "npims",
+    "host":     os.getenv("DB_HOST", "localhost"),
+    "port":     int(os.getenv("DB_PORT", 3306)),
+    "user":     os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "database": os.getenv("DB_NAME", "npims"),
 }
-
 
 def get_db():
     return mysql.connector.connect(**DB_CONFIG)
@@ -42,6 +43,22 @@ def log_audit(cursor, officer_id, action_type, table_affected, record_id):
         )
     except Exception:
         pass  # audit failure must never break the main operation
+
+@app.route("/api/countries")
+def get_countries():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT CountryCode, CountryName
+        FROM COUNTRY
+        WHERE IsActive = 1
+        ORDER BY CountryName
+    """)
+
+    rows = cursor.fetchall()
+    db.close()
+    return jsonify(camel_rows(rows))
 
 
 # ── STATIC FILES ───────────────────────────────────────────────
@@ -400,6 +417,8 @@ def visa_apply():
     try:
         db = get_db()
         cursor = db.cursor()
+        cursor.execute("SELECT OfficerID FROM IMMIGRATION_OFFICER LIMIT 1")
+        officer_id = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM APPLICATION")
         count = cursor.fetchone()[0]
         app_id = f"APP{count + 1:04d}"
@@ -413,7 +432,7 @@ def visa_apply():
             (ApplicationID, NationalIDNo, OfficerID, ApplicationType, ApplicationStatus, ApplicationDate)
             VALUES (%s, %s, %s, 'Visa', 'Pending', %s)
         """,
-            (app_id, data["nationalIdNo"], data["officerId"], str(date.today())),
+            (app_id, data["nationalIDNo"], officer_id, str(date.today())),
         )
 
         cursor.execute(
@@ -476,12 +495,13 @@ def get_pending_visas():
         db = get_db()
         cursor = db.cursor(dictionary=True)
         cursor.execute("""
-            SELECT v.VisaID, v.NationalIDNo, v.VisaType, v.VisaStatus,
-                   a.ApplicationDate
-            FROM VISA v
-            JOIN APPLICATION a ON v.ApplicationID = a.ApplicationID
-            WHERE v.VisaStatus = 'Pending'
-            ORDER BY a.ApplicationDate ASC
+            SELECT v.VisaID, v.NationalIDNo, v.PassportNo,
+                v.VisaType, v.VisaStatus, v.NumberOfEntries,
+                v.DurationOfStay, a.ApplicationID, a.ApplicationDate
+                FROM VISA v
+                JOIN APPLICATION a ON v.ApplicationID = a.ApplicationID
+                WHERE v.VisaStatus = 'Pending'
+                ORDER BY a.ApplicationDate ASC
         """)
         rows = cursor.fetchall()
         db.close()
@@ -780,7 +800,7 @@ def register_officer():
             (OfficerID, OfficerFirstName, OfficerLastName, BorderPostID)
             VALUES (%s, %s, %s, %s)
         """,
-            (officer_id, data["firstName"], data["lastName"], data["borderPostId"]),
+            (officer_id, data["officerFirstName"], data["officerLastName"], data["borderPostID"]),
         )
         db.commit()
         db.close()
@@ -797,7 +817,7 @@ def reassign_officer():
         cursor = db.cursor()
         cursor.execute(
             "UPDATE IMMIGRATION_OFFICER SET BorderPostID = %s WHERE OfficerID = %s",
-            (data["borderPostId"], data["officerId"]),
+            (data["borderPostID"], data["officerID"]),
         )
         db.commit()
         db.close()

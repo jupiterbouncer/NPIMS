@@ -35,6 +35,33 @@ INSERT INTO COUNTRY (CountryCode, CountryName, Continent, VisaRequired, IsActive
 ('TUR','Turkey','Asia','Yes',1),
 ('NLD','Netherlands','Europe','Yes',1);
 
+DELETE FROM COUNTRY c
+WHERE c.CountryCode NOT IN (
+    'GHA','NGA','ZAF','KEN','CIV','TGO','BFA','SEN','MAR','EGY',
+    'GBR','FRA','DEU','ESP','ITA',
+    'USA','CAN','MEX',
+    'BRA','ARG',
+    'CHN','JPN','IND','ARE','QAT','SAU',
+    'AUS','NZL',
+    'TUR','NLD'
+)
+AND NOT EXISTS (
+    SELECT 1
+    FROM CITIZEN ct
+    WHERE ct.CountryOfBirth = c.CountryCode
+)
+AND NOT EXISTS (
+    SELECT 1
+    FROM BORDER_POST bp
+    WHERE bp.CountryCode = c.CountryCode
+)
+AND NOT EXISTS (
+    SELECT 1
+    FROM TRAVEL_RECORD tr
+    WHERE tr.DepartureCountry = c.CountryCode
+       OR tr.ArrivalCountry = c.CountryCode
+);
+
 -- 2. CITIZEN — 30 rows
 INSERT INTO CITIZEN (NationalIDNo, FirstName, LastName, OtherName, DOB, CountryOfBirth, Gender, Nationality, Address, Phone, Email) VALUES
 ('GH000001','Kwame','Mensah','Kofi','1980-01-01','GHA','Male','Ghanaian','East Legon, Accra','+233241000000','kwame.mensah1@example.com'),

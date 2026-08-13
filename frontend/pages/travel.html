@@ -237,30 +237,6 @@
               <label for="departureCountry">Departure Country <span class="required">*</span></label>
               <select id="departureCountry">
                 <option value="">— Select Country —</option>
-                <option value="GHA">Ghana</option>
-                <option value="NGA">Nigeria</option>
-                <option value="ZAF">South Africa</option>
-                <option value="KEN">Kenya</option>
-                <option value="CIV">Ivory Coast</option>
-                <option value="TGO">Togo</option>
-                <option value="BFA">Burkina Faso</option>
-                <option value="SEN">Senegal</option>
-                <option value="MAR">Morocco</option>
-                <option value="EGY">Egypt</option>
-                <option value="GBR">United Kingdom</option>
-                <option value="FRA">France</option>
-                <option value="DEU">Germany</option>
-                <option value="ESP">Spain</option>
-                <option value="ITA">Italy</option>
-                <option value="USA">United States</option>
-                <option value="CAN">Canada</option>
-                <option value="BRA">Brazil</option>
-                <option value="CHN">China</option>
-                <option value="JPN">Japan</option>
-                <option value="IND">India</option>
-                <option value="ARE">United Arab Emirates</option>
-                <option value="QAT">Qatar</option>
-                <option value="AUS">Australia</option>
               </select>
               <div class="field-error" id="departureError">Departure country is required.</div>
             </div>
@@ -268,31 +244,6 @@
               <label for="arrivalCountry">Arrival Country <span class="required">*</span></label>
               <select id="arrivalCountry">
                 <option value="">— Select Country —</option>
-                <option value="">— Select Country —</option>
-                <option value="GHA">Ghana</option>
-                <option value="NGA">Nigeria</option>
-                <option value="ZAF">South Africa</option>
-                <option value="KEN">Kenya</option>
-                <option value="CIV">Ivory Coast</option>
-                <option value="TGO">Togo</option>
-                <option value="BFA">Burkina Faso</option>
-                <option value="SEN">Senegal</option>
-                <option value="MAR">Morocco</option>
-                <option value="EGY">Egypt</option>
-                <option value="GBR">United Kingdom</option>
-                <option value="FRA">France</option>
-                <option value="DEU">Germany</option>
-                <option value="ESP">Spain</option>
-                <option value="ITA">Italy</option>
-                <option value="USA">United States</option>
-                <option value="CAN">Canada</option>
-                <option value="BRA">Brazil</option>
-                <option value="CHN">China</option>
-                <option value="JPN">Japan</option>
-                <option value="IND">India</option>
-                <option value="ARE">United Arab Emirates</option>
-                <option value="QAT">Qatar</option>
-                <option value="AUS">Australia</option>
               </select>
               </select>
               <div class="field-error" id="arrivalError">Arrival country is required.</div>
@@ -378,7 +329,6 @@
         </table>
       </div>
     </div>
-
   </div>
 </main>
 
@@ -399,6 +349,20 @@
     if (role==='officer') { loadStats(); loadAllRecords(); }
   }
 
+  async function loadCountries(...selectIds) {
+    const countries = await fetch('/api/countries').then(r => r.json());
+
+    selectIds.forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">— Select Country —</option>';
+
+      countries.forEach(c => {
+        select.innerHTML +=
+        ` <option value="${c.countryCode}">${c.countryName}</option>`;
+      });
+    });
+  }
+
   async function loadCitizenTravel() {
     const id = document.getElementById('citizenLookupId').value.trim();
     if (!id) { showToast('Enter your National ID.','info'); return; }
@@ -417,7 +381,7 @@
             <div class="timeline-title">${r.departureCountry} → ${r.arrivalCountry} <span class="badge badge-${r.entryOrExit}" style="margin-left:8px;">${r.entryOrExit}</span></div>
             <div class="timeline-meta">
               <span>📍 ${r.borderPost}</span>
-              <span class="badge badge-${r.modeOfTravel}">${r.modeOfTravel}</span>
+              <span class="badge badge-${r.modeOfTravel.toLowerCase()}">${r.modeOfTravel.toLowerCase()}</span>
               <span>🪪 ${r.passportNo}</span>
             </div>
           </div>
@@ -528,13 +492,13 @@
     if(!data.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="9">No records found.</td></tr>`;return;}
     tbody.innerHTML=data.map(r=>`
       <tr>
-        <td><strong>${r.travelId}</strong></td>
-        <td>${r.nationalIdNo}</td>
+        <td><strong>${r.travelID}</strong></td>
+        <td>${r.nationalIDNo}</td>
         <td>${r.passportNo}</td>
         <td><span class="badge badge-${r.entryOrExit}">${r.entryOrExit}</span></td>
         <td>${r.departureCountry}</td>
         <td>${r.arrivalCountry}</td>
-        <td><span class="badge badge-${r.modeOfTravel}">${r.modeOfTravel}</span></td>
+        <td><span class="badge badge-${r.modeOfTravel.toLowerCase()}">${r.modeOfTravel.toLowerCase()}</span></td>
         <td>${formatDate(r.travelDate)}</td>
         <td>${r.borderPost}</td>
       </tr>`).join('');
@@ -557,6 +521,7 @@
     toast.textContent=msg; toast.className=`toast ${type} show`;
     setTimeout(()=>toast.classList.remove('show'),3500);
   }
+  loadCountries('departureCountry', 'arrivalCountry');
 </script>
 </body>
 </html>

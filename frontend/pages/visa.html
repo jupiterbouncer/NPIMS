@@ -181,44 +181,13 @@
               <label for="visaType">Visa Type <span class="required">*</span></label>
               <select id="visaType">
                 <option value="">— Select Type —</option>
-                <option value="Tourist">Tourist</option>
+                <option value="Visitor">Visitor</option>
                 <option value="Student">Student</option>
                 <option value="Work">Work</option>
                 <option value="Transit">Transit</option>
                 <option value="Diplomatic">Diplomatic</option>
               </select>
               <div class="field-error" id="visaTypeError">Visa type is required.</div>
-            </div>
-            <div class="form-group">
-              <label for="destinationCountry">Destination Country <span class="required">*</span></label>
-              <select id="destinationCountry">
-                <option value="">— Select Country —</option>
-                <option value="GHA">Ghana</option>
-                <option value="NGA">Nigeria</option>
-                <option value="ZAF">South Africa</option>
-                <option value="KEN">Kenya</option>
-                <option value="CIV">Ivory Coast</option>
-                <option value="TGO">Togo</option>
-                <option value="BFA">Burkina Faso</option>
-                <option value="SEN">Senegal</option>
-                <option value="MAR">Morocco</option>
-                <option value="EGY">Egypt</option>
-                <option value="GBR">United Kingdom</option>
-                <option value="FRA">France</option>
-                <option value="DEU">Germany</option>
-                <option value="ESP">Spain</option>
-                <option value="ITA">Italy</option>
-                <option value="USA">United States</option>
-                <option value="CAN">Canada</option>
-                <option value="BRA">Brazil</option>
-                <option value="CHN">China</option>
-                <option value="JPN">Japan</option>
-                <option value="IND">India</option>
-                <option value="ARE">United Arab Emirates</option>
-                <option value="QAT">Qatar</option>
-                <option value="AUS">Australia</option>
-              </select>
-              <div class="field-error" id="destinationError">Destination country is required.</div>
             </div>
             <div class="form-group">
               <label for="numberOfEntries">Number of Entries <span class="required">*</span></label>
@@ -436,10 +405,9 @@
       tbody.innerHTML = data.map(v=>`
         <tr>
           <td><strong>${v.applicationID}</strong></td>
-          <td>${v.nationalIdNo}</td>
+          <td>${v.nationalIDNo}</td>
           <td>${v.passportNo || '—'}</td>
           <td>${v.visaType}</td>
-          <td>${v.destinationCountry || '—'}</td>
           <td><span class="badge badge-pending">Pending</span></td>
           <td><button class="btn btn-secondary btn-sm" onclick="reviewVisa(${JSON.stringify(v).replace(/"/g,"'")})">Review</button></td>
         </tr>`).join('');
@@ -487,28 +455,27 @@
     document.getElementById('detailTitle').textContent = `Review — ${v.applicationID}`;
     document.getElementById('detailGrid').innerHTML = `
       <div class="detail-field"><label>Application ID</label><span>${v.applicationID}</span></div>
-      <div class="detail-field"><label>National ID</label><span>${v.nationalIdNo}</span></div>
+      <div class="detail-field"><label>National ID</label><span>${v.nationalIDNo}</span></div>
       <div class="detail-field"><label>Passport No.</label><span>${v.passportNo || '—'}</span></div>
       <div class="detail-field"><label>Visa Type</label><span>${v.visaType}</span></div>
-      <div class="detail-field"><label>Destination</label><span>${v.destinationCountry || '—'}</span></div>
       <div class="detail-field"><label>Entries</label><span>${v.numberOfEntries || '—'}</span></div>
       <div class="detail-field"><label>Duration</label><span>${v.durationOfStay ? v.durationOfStay+' months' : '—'}</span></div>
       <div class="detail-field"><label>Status</label><span class="badge badge-pending">Pending</span></div>`;
     document.getElementById('detailActions').innerHTML = `
       <textarea id="visaRejectionReason" placeholder="Rejection reason (required if rejecting)..."></textarea>
-      <button class="btn btn-success btn-sm" onclick="processVisa('${v.applicationID}','Approved')">Approve</button>
-      <button class="btn btn-danger btn-sm"  onclick="processVisa('${v.applicationID}','Rejected')">Reject</button>`;
+      <button class="btn btn-success btn-sm" onclick="processVisa('${v.visaID}','approved')"">Approve</button>
+      <button class="btn btn-danger btn-sm"  onclick="processVisa('${v.visaID}','rejected')"">Reject</button>`;
     document.getElementById('detailPanel').classList.add('visible');
     document.getElementById('detailPanel').scrollIntoView({behavior:'smooth'});
   }
 
-  async function processVisa(applicationId, decision) {
+  async function processVisa(visaId, decision) {
     const reason = document.getElementById('visaRejectionReason')?.value.trim();
     if (decision==='Rejected' && !reason) { showToast('✗ Rejection reason is required.', 'error-toast'); return; }
     try {
       const res = await fetch('/api/visa/process', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ applicationId, decision, reason: reason || null })
+        body: JSON.stringify({ visaId, decision, reason: reason || null })
       });
       const data = await res.json();
       if (res.ok) {
