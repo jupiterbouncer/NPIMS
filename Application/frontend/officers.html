@@ -210,36 +210,6 @@
       <input type="text" id="searchOfficer" placeholder="Search by name or Officer ID..." onkeydown="if(event.key==='Enter')loadOfficers()"/>
       <select id="filterPost" onchange="loadOfficers()">
         <option value="">All Border Posts</option>
-        <option value="BP00001">Kotoka International Airport (GHA)</option>
-          <option value="BP00002">Aflao Border Post (GHA)</option>
-          <option value="BP00003">Tema Harbour (GHA)</option>
-          <option value="BP00004">Paga Border Post (GHA)</option>
-          <option value="BP00005">Elubo Border Post (GHA)</option>
-          <option value="BP00006">Hamile Border Post (GHA)</option>
-          <option value="BP00007">Takoradi Port (GHA)</option>
-          <option value="BP00008">Kumasi Airport (GHA)</option>
-          <option value="BP00009">Tamale Airport (GHA)</option>
-          <option value="BP00010">Kojokrom Border Post (GHA)</option>
-          <option value="BP00011">Abidjan International Airport (CIV)</option>
-          <option value="BP00012">Lome International Airport (TGO)</option>
-          <option value="BP00013">Murtala Muhammed Airport (NGA)</option>
-          <option value="BP00014">Nnamdi Azikiwe Airport (NGA)</option>
-          <option value="BP00015">Ouagadougou Airport (BFA)</option>
-          <option value="BP00016">Dakar Blaise Diagne Airport (SEN)</option>
-          <option value="BP00017">Jomo Kenyatta Airport (KEN)</option>
-          <option value="BP00018">OR Tambo Airport (ZAF)</option>
-          <option value="BP00019">Heathrow Airport (GBR)</option>
-          <option value="BP00020">Charles de Gaulle Airport (FRA)</option>
-          <option value="BP00021">Frankfurt Airport (DEU)</option>
-          <option value="BP00022">Barajas Airport (ESP)</option>
-          <option value="BP00023">Fiumicino Airport (ITA)</option>
-          <option value="BP00024">JFK Airport (USA)</option>
-          <option value="BP00025">Toronto Pearson Airport (CAN)</option>
-          <option value="BP00026">Dubai International Airport (ARE)</option>
-          <option value="BP00027">Hamad International Airport (QAT)</option>
-          <option value="BP00028">Beijing Capital Airport (CHN)</option>
-          <option value="BP00029">Narita Airport (JPN)</option>
-          <option value="BP00030">Sydney Airport (AUS)</option>
       </select>
       <button class="btn btn-primary btn-sm" onclick="loadOfficers()">Search</button>
     </div>
@@ -273,36 +243,6 @@
         <label for="newBorderPost">New Border Post <span class="required">*</span></label>
         <select id="newBorderPost">
           <option value="">— Select —</option>
-          <option value="BP00001">Kotoka International Airport (GHA)</option>
-          <option value="BP00002">Aflao Border Post (GHA)</option>
-          <option value="BP00003">Tema Harbour (GHA)</option>
-          <option value="BP00004">Paga Border Post (GHA)</option>
-          <option value="BP00005">Elubo Border Post (GHA)</option>
-          <option value="BP00006">Hamile Border Post (GHA)</option>
-          <option value="BP00007">Takoradi Port (GHA)</option>
-          <option value="BP00008">Kumasi Airport (GHA)</option>
-          <option value="BP00009">Tamale Airport (GHA)</option>
-          <option value="BP00010">Kojokrom Border Post (GHA)</option>
-          <option value="BP00011">Abidjan International Airport (CIV)</option>
-          <option value="BP00012">Lome International Airport (TGO)</option>
-          <option value="BP00013">Murtala Muhammed Airport (NGA)</option>
-          <option value="BP00014">Nnamdi Azikiwe Airport (NGA)</option>
-          <option value="BP00015">Ouagadougou Airport (BFA)</option>
-          <option value="BP00016">Dakar Blaise Diagne Airport (SEN)</option>
-          <option value="BP00017">Jomo Kenyatta Airport (KEN)</option>
-          <option value="BP00018">OR Tambo Airport (ZAF)</option>
-          <option value="BP00019">Heathrow Airport (GBR)</option>
-          <option value="BP00020">Charles de Gaulle Airport (FRA)</option>
-          <option value="BP00021">Frankfurt Airport (DEU)</option>
-          <option value="BP00022">Barajas Airport (ESP)</option>
-          <option value="BP00023">Fiumicino Airport (ITA)</option>
-          <option value="BP00024">JFK Airport (USA)</option>
-          <option value="BP00025">Toronto Pearson Airport (CAN)</option>
-          <option value="BP00026">Dubai International Airport (ARE)</option>
-          <option value="BP00027">Hamad International Airport (QAT)</option>
-          <option value="BP00028">Beijing Capital Airport (CHN)</option>
-          <option value="BP00029">Narita Airport (JPN)</option>
-          <option value="BP00030">Sydney Airport (AUS)</option>
         </select>
       </div>
     </div>
@@ -317,6 +257,22 @@
 
 <script>
   let selectedOfficerId = null;
+
+  async function loadBorderPostsOptions(...selectIds) {
+    const posts = await fetch('/api/border-posts').then(r => r.json());
+
+    selectIds.forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">— Select Border Post —</option>';
+
+      posts.forEach(p => {
+        select.innerHTML +=
+          `<option value="${p.borderPostID}">
+            ${p.borderPostName} (${p.countryCode})
+          </option>`;
+      });
+    });
+  }
 
   async function loadStats() {
     try {
@@ -383,23 +339,39 @@
     finally { btn.disabled = false; btn.textContent = 'Register Officer'; }
   }
 
-  function openReassign(officerId, name) {
+  function openReassign(officerId, officerName) {
     selectedOfficerId = officerId;
-    document.getElementById('modalOfficerName').value = `${officerId} — ${name}`;
+    document.getElementById('modalOfficerName').value = `${officerId} -> ${officerName}`;
     document.getElementById('newBorderPost').value = '';
     document.getElementById('reassignModal').classList.add('visible');
   }
 
   async function confirmReassign() {
     const newPost = document.getElementById('newBorderPost').value;
-    if (!newPost) { showToast('Select a border post.', 'error-toast'); return; }
-    try {
-      const res = await fetch('/api/officers/reassign', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ officerID: selectedOfficerID, borderPostID: newPost }) });
-      const data = await res.json();
-      if (res.ok) { showToast('✓ Officer reassigned.', 'success'); closeModal(); loadOfficers(); }
-      else { showToast(`✗ ${data.message || 'Reassignment failed.'}`, 'error-toast'); }
-    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
-  }
+
+    if (!selectedOfficerId || !newPost) {
+        showToast('Select an officer and border post.', 'error-toast');
+        return;
+    }
+
+    const res = await fetch('/api/officers/reassign', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            officerID: selectedOfficerId,
+            borderPostID: newPost
+        })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+        showToast('✓ Officer reassigned successfully.');
+        loadOfficers();
+    } else {
+        showToast(`✗ ${data.message}`, 'error-toast');
+    }
+}
 
   function closeModal() { document.getElementById('reassignModal').classList.remove('visible'); }
   function resetOfficerForm() {
@@ -414,6 +386,7 @@
   }
 
   loadStats(); loadOfficers();
+  loadBorderPostsOptions('filterPost', 'newBorderPost');
 </script>
 </body>
 </html>

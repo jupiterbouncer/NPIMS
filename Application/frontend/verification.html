@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Document Verification | NPIMS</title>
+  <title>Document Verification - NPIMS</title>
   <style>
     :root {
       --navy:#0D1F3C;--navy-mid:#162D54;--blue:#1A4A8A;--blue-light:#2E6BC4;
@@ -391,7 +391,9 @@
       const res  = await fetch(`/api/verify/citizen?nationalId=${nationalId}&officerId=${officerId}`);
       const data = await res.json();
       renderCitizenResult(data);
-    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+    } catch (err) { 
+      console.error(err);
+      showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   function renderCitizenResult(data) {
@@ -428,7 +430,7 @@
           ${data.passports.map(p => `
             <div class="history-item">
               <span><strong>${p.passportNo}</strong> — ${p.passportType}</span>
-              <span><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span> &nbsp; expires ${p.expiryDate}</span>
+              <span><span class="badge badge-${p.passportStatus.toLowerCase()}">${p.passportStatus}</span> &nbsp; expires ${p.expiryDate}</span>
             </div>`).join('')}
         </div>` : ''}
       </div>` : ''}

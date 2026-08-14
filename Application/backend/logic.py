@@ -434,6 +434,12 @@ def visa_apply():
         db = get_db()
         cursor = db.cursor()
         cursor.execute("SELECT OfficerID FROM IMMIGRATION_OFFICER LIMIT 1")
+
+        officer_row = cursor.fetchone()
+        if not officer_row:
+            db.close()
+            return jsonify({"message: No officers available"}), 503
+        
         officer_id = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM APPLICATION")
         count = cursor.fetchone()[0]
@@ -448,7 +454,7 @@ def visa_apply():
             (ApplicationID, NationalIDNo, OfficerID, ApplicationType, ApplicationStatus, ApplicationDate)
             VALUES (%s, %s, %s, 'Visa', 'Pending', %s)
         """,
-            (app_id, data["nationalIDNo"], officer_id, str(date.today())),
+            (app_id, data["nationalIdNo"], officer_id, str(date.today())),
         )
 
         cursor.execute(
@@ -463,7 +469,7 @@ def visa_apply():
                 data["nationalIdNo"],
                 data["passportNo"],
                 app_id,
-                data["officerId"],
+                officer_id,
                 data["visaType"],
                 data.get("numberOfEntries"),
                 data.get("durationOfStay"),
@@ -568,6 +574,7 @@ def process_visa():
     visa_id = data["visaId"]
     decision = data["decision"]
     reason = data.get("reason")
+    db = None
     try:
         db = get_db()
         cursor = db.cursor()
@@ -606,10 +613,15 @@ def process_visa():
             ("Approved" if decision == "approved" else "Rejected", reason, visa_id),
         )
         db.commit()
-        db.close()
         return jsonify({"message": f"Visa {decision}"}), 200
     except Exception as e:
+        if db:
+            db.rollback()
+
         return jsonify({"message": str(e)}), 500
+    finally:
+        if db and db.is_connected():
+            db.close()
 
 
 # ══════════════════════════════════════════════════════════════
@@ -835,6 +847,10 @@ def reassign_officer():
             "UPDATE IMMIGRATION_OFFICER SET BorderPostID = %s WHERE OfficerID = %s",
             (data["borderPostID"], data["officerID"]),
         )
+        if cursor.rowcount == 0:
+            db.close()
+            return jsonify({"message": "Officer not found"}), 404
+        
         db.commit()
         db.close()
         return jsonify({"message": "Officer reassigned"}), 200
@@ -874,8 +890,16 @@ def get_border_posts():
         query = """
             SELECT b.BorderPostID, b.BorderPostName, b.BorderType,
                    b.CountryCode, c.CountryName
+            COUNT(DISTINCT o.OfficerID) AS OfficerCount,
+            COUNT(DISTINCT t.TravelID) AS CrossingCount,
+            GROUP_CONTACT(
+                DISTINCT CONCAT(o.OfficerFirstName, ' ', o.OfficerLastName)
+                SEPARATOR ', '
+            ) AS Officers
             FROM BORDER_POST b
             JOIN COUNTRY c ON b.CountryCode = c.CountryCode
+            LEFT JOIN IMMIGRATION_OFFCIER o ON b.BorderPostID = O.BorderPostID
+            LEFT JOIN TRAVEL_RECORD t ON b.BorderPostID = t.BorderPostID
             WHERE 1=1
         """
         params = []
@@ -885,6 +909,15 @@ def get_border_posts():
         if country:
             query += " AND b.CountryCode = %s"
             params.append(country)
+
+        query += """
+            GROUP BY
+                b.BorderPostID,
+                b.BorderPostName,
+                b.BorderType, 
+                b.CountryCode,
+                c.CountryName
+        """
         query += " ORDER BY b.BorderPostName ASC"
         cursor.execute(query, params)
         rows = cursor.fetchall()
@@ -900,12 +933,15 @@ def get_deployments():
         db = get_db()
         cursor = db.cursor(dictionary=True)
         cursor.execute("""
-            SELECT b.BorderPostID, b.BorderPostName, b.BorderType,
-                   COUNT(o.OfficerID) AS officerCount
-            FROM BORDER_POST b
-            LEFT JOIN IMMIGRATION_OFFICER o ON b.BorderPostID = o.BorderPostID
-            GROUP BY b.BorderPostID, b.BorderPostName, b.BorderType
-            ORDER BY officerCount DESC
+            SELECT o.OfficerID,
+                    o.OfficerFirstName,
+                    o.OfficerLastName,
+                    b.BorderPostName,
+                    b.BorderType,
+                    b.CountryCode
+            FROM IMMIGRATION_OFFICER o
+            JOIN BORDER_POST b on o.BorderPostID = b.BorderPostID
+            ORDER BY o.OfficerLastName, o.OfficerFirstName
         """)
         rows = cursor.fetchall()
         db.close()
@@ -920,9 +956,7 @@ def register_border_post():
     try:
         db = get_db()
         cursor = db.cursor()
-        cursor.execute("SELECT COUNT(*) FROM BORDER_POST")
-        count = cursor.fetchone()[0]
-        post_id = f"{data['countryCode']}{count + 1:04d}"
+        post_id = data["borderPostID"]
         cursor.execute(
             """
             INSERT INTO BORDER_POST (BorderPostID, BorderPostName, CountryCode, BorderType)
@@ -1205,6 +1239,7 @@ def verify_citizen_doc():
         for p in passports:
             p["ExpiryDate"] = str(p["ExpiryDate"])
         active_count = sum(1 for p in passports if p["PassportStatus"] == "Active")
+        passports = camel_rows(passports)
         log_audit(cursor, officer_id, "Viewed", "CITIZEN", national_id)
         db.commit()
         db.close()
