@@ -371,9 +371,9 @@
     });
     const nationalId = document.getElementById('visaNationalId');
     const nationalIdErr = document.getElementById('visaNationalIdError');
-    if (nationalId.value.trim() && !/^\d{8}$/.test(nationalId.value.trim())) {
+    if (nationalId.value.trim() && !/^[A-Za-z0-9]{8}$/.test(nationalId.value.trim())) {
       nationalId.classList.add('error');
-      nationalIdErr.textContent = 'National ID must be exactly 8 digits.';
+      nationalIdErr.textContent = 'National ID must be exactly 8 letters/numbers.';
       nationalIdErr.classList.add('visible');
       valid = false;
     } else if (nationalId.value.trim()) {

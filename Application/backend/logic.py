@@ -149,8 +149,9 @@ def register_citizen():
     missing = [field for field in required if not str(data.get(field, "")).strip()]
     if missing:
         return jsonify({"message": f"Missing required fields: {', '.join(missing)}"}), 400
-    if not re.fullmatch(r"\d{8}", data["nationalIdNo"].strip()):
-        return jsonify({"message": "National ID must be exactly 8 digits"}), 400
+    data["nationalIdNo"] = data["nationalIdNo"].strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{8}", data["nationalIdNo"]):
+        return jsonify({"message": "National ID must be exactly 8 letters/numbers"}), 400
     if data["gender"] not in ("Male", "Female"):
         return jsonify({"message": "Gender must be Male or Female"}), 400
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", data["email"].strip()):
@@ -250,8 +251,9 @@ def passport_apply():
     missing = [field for field in required if not str(data.get(field, "")).strip()]
     if missing:
         return jsonify({"message": f"Missing required fields: {', '.join(missing)}"}), 400
-    if not re.fullmatch(r"\d{8}", data["nationalIdNo"].strip()):
-        return jsonify({"message": "National ID must be exactly 8 digits"}), 400
+    data["nationalIdNo"] = data["nationalIdNo"].strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{8}", data["nationalIdNo"]):
+        return jsonify({"message": "National ID must be exactly 8 letters/numbers"}), 400
     if data["applicationType"] not in ("New Passport", "Renewal"):
         return jsonify({"message": "Application type must be New Passport or Renewal"}), 400
     if data.get("applicationDate", str(date.today())) > str(date.today()):
@@ -339,10 +341,17 @@ def get_applications(national_id):
 
 @app.route("/api/passport/pending")
 def get_pending():
-    officer_id = request.args.get("officerId", "")
+    officer_id = request.args.get("officerId", "").strip().upper()
     try:
         db = get_db()
         cursor = db.cursor(dictionary=True)
+        if officer_id:
+            if not re.fullmatch(r"OF\d{5}", officer_id):
+                db.close()
+                return jsonify({"message": "Officer ID must use the format OF00001"}), 400
+            if not officer_exists(cursor, officer_id):
+                db.close()
+                return jsonify({"message": "Officer not found"}), 400
         query = """
             SELECT ApplicationID, NationalIDNo, ApplicationType,
                    ApplicationStatus, ApplicationDate
@@ -378,10 +387,15 @@ def process_passport():
     passport_type = data.get("passportType", "Ordinary")
     if passport_type not in ("Ordinary", "Official"):
         return jsonify({"message": "Passport type must be Ordinary or Official"}), 400
+    officer_id = str(data.get("officerId", "")).strip().upper()
+    if not officer_id:
+        return jsonify({"message": "Officer ID is required"}), 400
+    if not re.fullmatch(r"OF\d{5}", officer_id):
+        return jsonify({"message": "Officer ID must use the format OF00001"}), 400
     try:
         db = get_db()
         cursor = db.cursor(dictionary=True)
-        if data.get("officerId") and not officer_exists(cursor, data["officerId"]):
+        if not officer_exists(cursor, officer_id):
             db.close()
             return jsonify({"message": "Officer not found"}), 400
 
@@ -528,8 +542,9 @@ def visa_apply():
     missing = [field for field in required if not str(data.get(field, "")).strip()]
     if missing:
         return jsonify({"message": f"Missing required fields: {', '.join(missing)}"}), 400
-    if not re.fullmatch(r"\d{8}", data["nationalIdNo"].strip()):
-        return jsonify({"message": "National ID must be exactly 8 digits"}), 400
+    data["nationalIdNo"] = data["nationalIdNo"].strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{8}", data["nationalIdNo"]):
+        return jsonify({"message": "National ID must be exactly 8 letters/numbers"}), 400
     if data["numberOfEntries"] not in ("Single", "Multiple"):
         return jsonify({"message": "Number of entries must be Single or Multiple"}), 400
     try:

@@ -735,9 +735,9 @@
     });
     const nationalId = document.getElementById('appNationalId');
     const nationalIdErr = document.getElementById('appNationalIdError');
-    if (nationalId.value.trim() && !/^\d{8}$/.test(nationalId.value.trim())) {
+    if (nationalId.value.trim() && !/^[A-Za-z0-9]{8}$/.test(nationalId.value.trim())) {
       nationalId.classList.add('error');
-      nationalIdErr.textContent = 'National ID must be exactly 8 digits.';
+      nationalIdErr.textContent = 'National ID must be exactly 8 letters/numbers.';
       nationalIdErr.classList.add('visible');
       valid = false;
     } else if (nationalId.value.trim()) {
@@ -818,9 +818,9 @@
     });
     const nationalId = document.getElementById('paymentNationalId');
     const nationalErr = document.getElementById('paymentNationalIdError');
-    if (nationalId.value.trim() && !/^\d{8}$/.test(nationalId.value.trim())) {
+    if (nationalId.value.trim() && !/^[A-Za-z0-9]{8}$/.test(nationalId.value.trim())) {
       nationalId.classList.add('error');
-      nationalErr.textContent = 'National ID must be exactly 8 digits.';
+      nationalErr.textContent = 'National ID must be exactly 8 letters/numbers.';
       nationalErr.classList.add('visible');
       valid = false;
     } else if (nationalId.value.trim()) {
@@ -905,10 +905,26 @@
   // Offier session
   let sessionOfficer = null;
 
-  function setOfficerSession() {
-    const id = document.getElementById('sessionOfficerId').value.trim();
+  async function setOfficerSession() {
+    const id = document.getElementById('sessionOfficerId').value.trim().toUpperCase();
     if (!id) { showToast('Enter your Officer ID', 'info'); return; }
+    if (!/^OF\d{5}$/.test(id)) {
+      showToast('Officer ID must use the format OF00001.', 'error-toast');
+      return;
+    }
+    try {
+      const officers = await getJson(`/api/officers?q=${encodeURIComponent(id)}`);
+      const exists = Array.isArray(officers) && officers.some(o => o.officerID === id);
+      if (!exists) {
+        showToast('Officer not found.', 'error-toast');
+        return;
+      }
+    } catch (err) {
+      showToast(`✗ ${err.message}`, 'error-toast');
+      return;
+    }
     sessionOfficer = id;
+    document.getElementById('sessionOfficerId').value = id;
     document.getElementById('officerLoginCard').style.display = 'none';
     document.getElementById('officerDashboard').style.display = 'block';
     loadPassportReports();
@@ -935,7 +951,7 @@
   async function lookupPassportFunction() {
     const nationalId = document.getElementById('passportStatusLookupId').value.trim();
     if (!nationalId) { showToast('Enter a National ID.', 'info'); return; }
-    if (!/^\d{8}$/.test(nationalId)) { showToast('National ID must be exactly 8 digits.', 'error-toast'); return; }
+    if (!/^[A-Za-z0-9]{8}$/.test(nationalId)) { showToast('National ID must be exactly 8 letters/numbers.', 'error-toast'); return; }
     try {
       const data = await getJson(`/api/reports/passport-status/${encodeURIComponent(nationalId)}`);
       document.getElementById('passportFunctionResult').textContent =

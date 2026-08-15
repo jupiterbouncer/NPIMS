@@ -539,9 +539,9 @@
     const val = this.value.trim();
     const lookup = document.getElementById('idLookup');
     if (!val) { lookup.classList.remove('visible'); return; }
-    if (!/^\d{8}$/.test(val)) {
+    if (!/^[A-Za-z0-9]{8}$/.test(val)) {
       lookup.classList.add('visible');
-      lookup.innerHTML = `<span class="exists">⚠ National ID must be exactly 8 digits.</span>`;
+      lookup.innerHTML = `<span class="exists">⚠ National ID must be exactly 8 letters/numbers.</span>`;
       return;
     }
 
@@ -591,9 +591,9 @@
 
     const nationalId = document.getElementById('nationalId');
     const nationalIdErr = document.getElementById('nationalIdError');
-    if (nationalId.value.trim() && !/^\d{8}$/.test(nationalId.value.trim())) {
+    if (nationalId.value.trim() && !/^[A-Za-z0-9]{8}$/.test(nationalId.value.trim())) {
       nationalId.classList.add('error');
-      nationalIdErr.textContent = 'National ID must be exactly 8 digits.';
+      nationalIdErr.textContent = 'National ID must be exactly 8 letters/numbers.';
       nationalIdErr.classList.add('visible');
       valid = false;
     } else if (nationalId.value.trim()) {
