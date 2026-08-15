@@ -232,6 +232,7 @@
       text-transform: uppercase;
     }
     .badge-pending  { background: rgba(183,119,13,0.12); color: var(--warning); }
+    .badge-processing { background: rgba(26,74,138,0.12); color: var(--blue); }
     .badge-approved { background: rgba(26,122,74,0.12);  color: var(--success); }
     .badge-rejected { background: rgba(192,57,43,0.12);  color: var(--error); }
     .badge-active   { background: rgba(26,74,138,0.12);  color: var(--blue); }
@@ -397,7 +398,6 @@
                 <option value="">— Select Type —</option>
                 <option value="New Passport">New Passport</option>
                 <option value="Renewal">Renewal</option>
-                <option value="Visa">Visa</option>
               </select>
               <div class="field-error" id="appTypeError">Please select an application type.</div>
             </div>
@@ -413,9 +413,8 @@
               <label for="passportType">Passport Type <span class="required">*</span></label>
               <select id="passportType">
                 <option value="">— Select —</option>
-                <option value="ordinary">Ordinary</option>
-                <option value="diplomatic">Diplomatic</option>
-                <option value="official">Official</option>
+                <option value="Ordinary">Ordinary</option>
+                <option value="Official">Official</option>
               </select>
               <div class="field-error" id="passportTypeError">Please select a passport type.</div>
             </div>
@@ -473,6 +472,60 @@
       </div>
     </div>
 
+    <!-- Payment -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">💳</span>
+          <h2>Application Payment</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        <form id="paymentForm" novalidate>
+          <div class="section-divider"><span>Payment Details</span></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="paymentApplicationId">Application ID <span class="required">*</span></label>
+              <input type="text" id="paymentApplicationId" placeholder="e.g. APP0031" maxlength="7" />
+              <div class="field-error" id="paymentApplicationIdError">Application ID is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="paymentNationalId">National ID <span class="required">*</span></label>
+              <input type="text" id="paymentNationalId" placeholder="Your National ID" maxlength="8" />
+              <div class="field-error" id="paymentNationalIdError">National ID is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="paymentAmount">Amount <span class="required">*</span></label>
+              <input type="number" id="paymentAmount" placeholder="e.g. 250" min="1" step="0.01" />
+              <div class="field-error" id="paymentAmountError">Amount must be greater than zero.</div>
+            </div>
+            <div class="form-group">
+              <label for="paymentMethod">Payment Method <span class="required">*</span></label>
+              <select id="paymentMethod">
+                <option value="">— Select —</option>
+                <option value="E-Transfer">E-Transfer</option>
+                <option value="Cash Deposit">Cash Deposit</option>
+              </select>
+              <div class="field-error" id="paymentMethodError">Payment method is required.</div>
+            </div>
+            <div class="form-group">
+              <label for="paymentFor">Payment For <span class="required">*</span></label>
+              <select id="paymentFor">
+                <option value="">— Select —</option>
+                <option value="Passport Application">Passport Application</option>
+                <option value="Renewal">Renewal</option>
+              </select>
+              <div class="field-error" id="paymentForError">Payment purpose is required.</div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="resetPaymentForm()">Clear</button>
+        <button class="btn btn-primary" id="paymentSubmitBtn" onclick="submitPayment()">Confirm Payment</button>
+      </div>
+    </div>
+
   </div><!-- /citizenView -->
 
 
@@ -494,6 +547,28 @@
   </div>
 
   <div id="officerDashboard" style="display:none;">
+  <!-- Reports -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-icon">📊</span>
+          <h2>Passport Reports</h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadPassportReports()">↻ Refresh</button>
+      </div>
+      <div class="card-body">
+        <div class="detail-grid" id="passportReportGrid">
+          <div class="detail-field"><label>Application Status</label><span>Loading...</span></div>
+        </div>
+        <div class="section-divider" style="margin-top:20px;"><span>Stored Function Lookup</span></div>
+        <div class="search-bar" style="padding:0;border-bottom:none;background:transparent;">
+          <input type="text" id="passportStatusLookupId" placeholder="Enter National ID for fn_PassportStatus..." />
+          <button class="btn btn-primary" onclick="lookupPassportFunction()">Check Status</button>
+        </div>
+        <div class="field-hint" id="passportFunctionResult" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
   <!-- Search -->
     <div class="card">
       <div class="card-header">
@@ -586,6 +661,31 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Request failed.');
+    return data;
+  }
+
+  function encodeRow(row) {
+    return encodeURIComponent(JSON.stringify(row));
+  }
+
+  function decodeRow(encoded) {
+    return JSON.parse(decodeURIComponent(encoded));
+  }
+
   // ── Role switching ──
   let currentRole = 'citizen';
 
@@ -611,7 +711,7 @@
     const type = document.getElementById('appType').value;
     const renewalGroup = document.getElementById('existingPassportGroup');
     const renewalNotice = document.getElementById('renewalNotice');
-    const isRenewal = type === 'renewal';
+    const isRenewal = type === 'Renewal';
     renewalGroup.style.display = isRenewal ? 'flex' : 'none';
     renewalNotice.classList.toggle('visible', isRenewal);
   }
@@ -633,7 +733,17 @@
         el.classList.remove('error'); err.classList.remove('visible');
       }
     });
-    if (document.getElementById('appType').value === 'renewal') {
+    const nationalId = document.getElementById('appNationalId');
+    const nationalIdErr = document.getElementById('appNationalIdError');
+    if (nationalId.value.trim() && !/^\d{8}$/.test(nationalId.value.trim())) {
+      nationalId.classList.add('error');
+      nationalIdErr.textContent = 'National ID must be exactly 8 digits.';
+      nationalIdErr.classList.add('visible');
+      valid = false;
+    } else if (nationalId.value.trim()) {
+      nationalIdErr.textContent = 'National ID is required.';
+    }
+    if (document.getElementById('appType').value === 'Renewal') {
       const ep = document.getElementById('existingPassportNo');
       const epErr = document.getElementById('existingPassportError');
       if (!ep.value.trim()) {
@@ -668,6 +778,7 @@
       const data = await res.json();
       if (res.ok) {
         showToast('✓ Application submitted. You will be notified of updates.', 'success');
+        document.getElementById('myAppsNationalId').value = payload.nationalIdNo;
         resetAppForm();
         loadMyApplications();
       } else {
@@ -688,6 +799,81 @@
     document.getElementById('renewalNotice').classList.remove('visible');
   }
 
+  function validatePayment() {
+    let valid = true;
+    [
+      ['paymentApplicationId','paymentApplicationIdError'],
+      ['paymentNationalId','paymentNationalIdError'],
+      ['paymentAmount','paymentAmountError'],
+      ['paymentMethod','paymentMethodError'],
+      ['paymentFor','paymentForError']
+    ].forEach(([id, errId]) => {
+      const el = document.getElementById(id);
+      const err = document.getElementById(errId);
+      if (!el.value.toString().trim()) {
+        el.classList.add('error'); err.classList.add('visible'); valid = false;
+      } else {
+        el.classList.remove('error'); err.classList.remove('visible');
+      }
+    });
+    const nationalId = document.getElementById('paymentNationalId');
+    const nationalErr = document.getElementById('paymentNationalIdError');
+    if (nationalId.value.trim() && !/^\d{8}$/.test(nationalId.value.trim())) {
+      nationalId.classList.add('error');
+      nationalErr.textContent = 'National ID must be exactly 8 digits.';
+      nationalErr.classList.add('visible');
+      valid = false;
+    } else if (nationalId.value.trim()) {
+      nationalErr.textContent = 'National ID is required.';
+    }
+    const amount = parseFloat(document.getElementById('paymentAmount').value);
+    if (!amount || amount <= 0) {
+      document.getElementById('paymentAmount').classList.add('error');
+      document.getElementById('paymentAmountError').classList.add('visible');
+      valid = false;
+    }
+    return valid;
+  }
+
+  async function submitPayment() {
+    if (!validatePayment()) return;
+    const btn = document.getElementById('paymentSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Confirming...';
+    const payload = {
+      applicationId: document.getElementById('paymentApplicationId').value.trim(),
+      nationalIdNo: document.getElementById('paymentNationalId').value.trim(),
+      amount: parseFloat(document.getElementById('paymentAmount').value),
+      paymentMethod: document.getElementById('paymentMethod').value,
+      paymentFor: document.getElementById('paymentFor').value,
+    };
+    try {
+      const res = await fetch('/api/payment/make', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`✓ Payment confirmed (${data.paymentRefNo}).`, 'success');
+        document.getElementById('myAppsNationalId').value = payload.nationalIdNo;
+        resetPaymentForm();
+        loadMyApplications();
+      } else {
+        showToast(`✗ ${data.message || 'Payment failed.'}`, 'error-toast');
+      }
+    } catch {
+      showToast('✗ Could not connect to server.', 'error-toast');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Confirm Payment';
+    }
+  }
+
+  function resetPaymentForm() {
+    document.getElementById('paymentForm').reset();
+    document.querySelectorAll('#paymentForm .field-error').forEach(e => e.classList.remove('visible'));
+    document.querySelectorAll('#paymentForm input,#paymentForm select').forEach(e => e.classList.remove('error'));
+  }
+
   // ── Citizen: load my applications ──
   async function loadMyApplications() {
     const nationalId = document.getElementById('myAppsNationalId').value.trim();
@@ -696,8 +882,7 @@
       return;
     }
     try {
-      const res = await fetch(`/api/passport/applications/${nationalId}`);
-      const data = await res.json();
+      const data = await getJson(`/api/passport/applications/${encodeURIComponent(nationalId)}`);
       const tbody = document.getElementById('myApplicationsBody');
       if (!data.length) {
         tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No applications found.</td></tr>`;
@@ -705,15 +890,15 @@
       }
       tbody.innerHTML = data.map(a => `
         <tr>
-          <td>${a.applicationID}</td>
-          <td>${formatType(a.applicationType)}</td>
-          <td>${a.applicationDate}</td>
-          <td><span class="badge badge-${a.applicationStatus}">${a.applicationStatus}</span></td>
-          <td>${a.passportNo || '—'}</td>
+          <td>${escapeHtml(a.applicationID)}</td>
+          <td>${escapeHtml(formatType(a.applicationType))}</td>
+          <td>${escapeHtml(a.applicationDate)}</td>
+          <td><span class="badge badge-${escapeHtml(a.applicationStatus).toLowerCase()}">${escapeHtml(a.applicationStatus)}</span></td>
+          <td>${escapeHtml(a.passportNo || '—')}</td>
         </tr>
       `).join('');
-    } catch {
-      showToast('✗ Could not load applications.', 'error-toast');
+    } catch (err) {
+      showToast(`✗ ${err.message}`, 'error-toast');
     }
   }
 
@@ -726,7 +911,38 @@
     sessionOfficer = id;
     document.getElementById('officerLoginCard').style.display = 'none';
     document.getElementById('officerDashboard').style.display = 'block';
+    loadPassportReports();
     loadPendingApplications();
+  }
+
+  async function loadPassportReports() {
+    try {
+      const data = await getJson('/api/reports/passport-status-summary');
+      const applicationRows = data.applications?.map(r => `
+        <div class="detail-field"><label>${escapeHtml(r.applicationStatus)}</label><span>${escapeHtml(r.total)} application${Number(r.total) === 1 ? '' : 's'}</span></div>
+      `).join('') || '';
+      const passportRows = data.passports?.map(r => `
+        <div class="detail-field"><label>${escapeHtml(r.passportStatus)} Passports</label><span>${escapeHtml(r.total)}</span></div>
+      `).join('') || '';
+      document.getElementById('passportReportGrid').innerHTML = applicationRows + passportRows || `
+        <div class="detail-field"><label>Report</label><span>No report data found.</span></div>
+      `;
+    } catch (err) {
+      showToast(`✗ ${err.message}`, 'error-toast');
+    }
+  }
+
+  async function lookupPassportFunction() {
+    const nationalId = document.getElementById('passportStatusLookupId').value.trim();
+    if (!nationalId) { showToast('Enter a National ID.', 'info'); return; }
+    if (!/^\d{8}$/.test(nationalId)) { showToast('National ID must be exactly 8 digits.', 'error-toast'); return; }
+    try {
+      const data = await getJson(`/api/reports/passport-status/${encodeURIComponent(nationalId)}`);
+      document.getElementById('passportFunctionResult').textContent =
+        `fn_PassportStatus(${nationalId}) → ${data.passportStatus}`;
+    } catch (err) {
+      showToast(`✗ ${err.message}`, 'error-toast');
+    }
   }
 
   // ── Officer: search passports ──
@@ -736,8 +952,9 @@
     if (!query) { showToast('Enter a search term.', 'info'); return; }
 
     try {
-      const res = await fetch(`/api/passport/search?q=${encodeURIComponent(query)}&status=${status}`);
-      const data = await res.json();
+      const params = new URLSearchParams({ q: query });
+      if (status) params.append('status', status);
+      const data = await getJson(`/api/passport/search?${params.toString()}`);
       const tbody = document.getElementById('passportSearchBody');
       if (!data.length) {
         tbody.innerHTML = `<tr class="empty-row"><td colspan="7">No records found.</td></tr>`;
@@ -745,25 +962,25 @@
       }
       tbody.innerHTML = data.map(p => `
         <tr>
-          <td><strong>${p.passportNo}</strong></td>
-          <td>${p.nationalIDNo}</td>
-          <td>${p.firstName} ${p.lastName}</td>
-          <td>${p.issueDate}</td>
-          <td>${p.expiryDate}</td>
-          <td><span class="badge badge-${p.status}">${p.passportStatus}</span></td>
-          <td><button class="btn btn-secondary btn-sm" onclick="viewDetail(${JSON.stringify(p).replace(/"/g,"'")})">View</button></td>
+          <td><strong>${escapeHtml(p.passportNo)}</strong></td>
+          <td>${escapeHtml(p.nationalIDNo)}</td>
+          <td>${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</td>
+          <td>${escapeHtml(p.issueDate)}</td>
+          <td>${escapeHtml(p.expiryDate)}</td>
+          <td><span class="badge badge-${escapeHtml(p.passportStatus).toLowerCase()}">${escapeHtml(p.passportStatus)}</span></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="viewDetail('${encodeRow(p)}')">View</button></td>
         </tr>
       `).join('');
-    } catch {
-      showToast('✗ Search failed.', 'error-toast');
+    } catch (err) {
+      showToast(`✗ ${err.message}`, 'error-toast');
     }
   }
 
   // ── Officer: load pending queue ──
   async function loadPendingApplications() {
+    if (!sessionOfficer) return;
     try {
-      const res = await fetch(`/api/passport/pending?officerId=${sessionOfficer}`);
-      const data = await res.json();
+      const data = await getJson(`/api/passport/pending?officerId=${encodeURIComponent(sessionOfficer)}`);
       const tbody = document.getElementById('pendingBody');
       if (!data.length) {
         tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No pending applications.</td></tr>`;
@@ -771,56 +988,57 @@
       }
       tbody.innerHTML = data.map(a => `
         <tr>
-          <td><strong>${a.applicationID}</strong></td>
-          <td>${a.nationalIDNo}</td>
-          <td>${formatType(a.applicationType)}</td>
-          <td>${a.applicationDate}</td>
-          <td><span class="badge badge-pending">Pending</span></td>
+          <td><strong>${escapeHtml(a.applicationID)}</strong></td>
+          <td>${escapeHtml(a.nationalIDNo)}</td>
+          <td>${escapeHtml(formatType(a.applicationType))}</td>
+          <td>${escapeHtml(a.applicationDate)}</td>
+          <td><span class="badge badge-${escapeHtml(a.applicationStatus).toLowerCase()}">${escapeHtml(a.applicationStatus)}</span></td>
           <td>
-            <button class="btn btn-secondary btn-sm" onclick="reviewApplication(${JSON.stringify(a).replace(/"/g,"'")})">Review</button>
+            <button class="btn btn-secondary btn-sm" onclick="reviewApplication('${encodeRow(a)}')">Review</button>
           </td>
         </tr>
       `).join('');
-    } catch {
-      showToast('✗ Could not load pending queue.', 'error-toast');
+    } catch (err) {
+      showToast(`✗ ${err.message}`, 'error-toast');
     }
   }
 
   // ── Officer: view passport detail ──
-  function viewDetail(p) {
+  function viewDetail(encoded) {
+    const p = decodeRow(encoded);
     document.getElementById('detailTitle').textContent = `Passport — ${p.passportNo}`;
     document.getElementById('detailGrid').innerHTML = `
-      <div class="detail-field"><label>Passport No.</label><span>${p.passportNo}</span></div>
-      <div class="detail-field"><label>National ID</label><span>${p.nationalIDNo}</span></div>
-      <div class="detail-field"><label>Citizen Name</label><span>${p.firstName} ${p.lastName}</span></div>
-      <div class="detail-field"><label>Issue Date</label><span>${p.issueDate}</span></div>
-      <div class="detail-field"><label>Expiry Date</label><span>${p.expiryDate}</span></div>
-      <div class="detail-field"><label>Status</label><span class="badge badge-${p.passportStatus}">${p.passportStatus}</span></div>
-      <div class="detail-field"><label>Type</label><span>${p.passportType || '—'}</span></div>
+      <div class="detail-field"><label>Passport No.</label><span>${escapeHtml(p.passportNo)}</span></div>
+      <div class="detail-field"><label>National ID</label><span>${escapeHtml(p.nationalIDNo)}</span></div>
+      <div class="detail-field"><label>Citizen Name</label><span>${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span></div>
+      <div class="detail-field"><label>Issue Date</label><span>${escapeHtml(p.issueDate)}</span></div>
+      <div class="detail-field"><label>Expiry Date</label><span>${escapeHtml(p.expiryDate)}</span></div>
+      <div class="detail-field"><label>Status</label><span class="badge badge-${escapeHtml(p.passportStatus).toLowerCase()}">${escapeHtml(p.passportStatus)}</span></div>
+      <div class="detail-field"><label>Type</label><span>${escapeHtml(p.passportType || '—')}</span></div>
     `;
     document.getElementById('detailActions').innerHTML = `
-      <button class="btn btn-danger btn-sm" onclick="revokePassport('${p.passportNo}')">Revoke Passport</button>
+      <button class="btn btn-danger btn-sm" onclick="revokePassport('${encodeURIComponent(p.passportNo)}')">Revoke Passport</button>
     `;
     document.getElementById('detailPanel').classList.add('visible');
     document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth' });
   }
 
   // ── Officer: review pending application ──
-  function reviewApplication(a) {
+  function reviewApplication(encoded) {
+    const a = decodeRow(encoded);
     document.getElementById('detailTitle').textContent = `Review Application for ${a.applicationID}`;
     document.getElementById('detailGrid').innerHTML = `
-      <div class="detail-field"><label>Application ID</label><span>${a.applicationID}</span></div>
-      <div class="detail-field"><label>National ID</label><span>${a.nationalIDNo}</span></div>
-      <div class="detail-field"><label>Type</label><span>${formatType(a.applicationType)}</span></div>
-      <div class="detail-field"><label>Passport Type</label><span>${a.passportType || '—'}</span></div>
-      <div class="detail-field"><label>Submitted</label><span>${a.applicationDate}</span></div>
+      <div class="detail-field"><label>Application ID</label><span>${escapeHtml(a.applicationID)}</span></div>
+      <div class="detail-field"><label>National ID</label><span>${escapeHtml(a.nationalIDNo)}</span></div>
+      <div class="detail-field"><label>Type</label><span>${escapeHtml(formatType(a.applicationType))}</span></div>
+      <div class="detail-field"><label>Passport Type</label><span>Ordinary</span></div>
+      <div class="detail-field"><label>Submitted</label><span>${escapeHtml(a.applicationDate)}</span></div>
       <div class="detail-field"><label>Status</label><span class="badge badge-pending">Pending</span></div>
-      ${a.notes ? `<div class="detail-field full"><label>Notes</label><span>${a.notes}</span></div>` : ''}
     `;
     document.getElementById('detailActions').innerHTML = `
       <textarea id="rejectionReason" placeholder="Rejection reason (required if rejecting)..."></textarea>
-      <button class="btn btn-success btn-sm" onclick="processApplication('${a.applicationID}', 'approved')">Approve</button>
-      <button class="btn btn-danger btn-sm"  onclick="processApplication('${a.applicationID}', 'rejected')">Reject</button>
+      <button class="btn btn-success btn-sm" onclick="processApplication('${encodeURIComponent(a.applicationID)}', 'approved')">Approve</button>
+      <button class="btn btn-danger btn-sm"  onclick="processApplication('${encodeURIComponent(a.applicationID)}', 'rejected')">Reject</button>
     `;
     document.getElementById('detailPanel').classList.add('visible');
     document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth' });
@@ -828,6 +1046,7 @@
 
   // ── Officer: approve or reject ──
   async function processApplication(applicationId, decision) {
+    applicationId = decodeURIComponent(applicationId);
     const reason = document.getElementById('rejectionReason')?.value.trim();
     if (decision === 'rejected' && !reason) {
       showToast('✗ A rejection reason is required.', 'error-toast'); return;
@@ -836,7 +1055,7 @@
       const res = await fetch(`/api/passport/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationId, decision, reason: reason || null, officerId: sessionOfficer })
+        body: JSON.stringify({ applicationId, decision, reason: reason || null, officerId: sessionOfficer, passportType: 'Ordinary' })
       });
       const data = await res.json();
       if (res.ok) {
@@ -855,6 +1074,7 @@
 
   // ── Officer: revoke passport ──
   async function revokePassport(passportNo) {
+    passportNo = decodeURIComponent(passportNo);
     if (!confirm(`Revoke passport ${passportNo}? This cannot be undone.`)) return;
     try {
       const res = await fetch(`/api/passport/revoke`, {

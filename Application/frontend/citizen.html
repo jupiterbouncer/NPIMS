@@ -447,7 +447,6 @@
               <option value="">— Select —</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
-              <option value="Other">Other</option>
             </select>
             <div class="field-error" id="genderError">Please select a gender.</div>
           </div>
@@ -502,18 +501,34 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
+  }
+
   async function loadCountries(...selectIds) {
-    const countries = await fetch('/api/countries').then(r => r.json());
+    try {
+      const res = await fetch('/api/countries');
+      const countries = await res.json();
+      if (!res.ok || !Array.isArray(countries)) throw new Error(countries.message || 'Could not load countries.');
 
-    selectIds.forEach(id => {
-      const select = document.getElementById(id);
-      select.innerHTML = '<option value="">— Select Country —</option>';
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">— Select Country —</option>';
 
-      countries.forEach(c => {
-        select.innerHTML +=
-        ` <option value="${c.countryCode}">${c.countryName}</option>`;
+        countries.forEach(c => {
+          select.innerHTML +=
+          ` <option value="${escapeHtml(c.countryCode)}">${escapeHtml(c.countryName)}</option>`;
+        });
       });
-    });
+    } catch {
+      showToast('✗ Could not load countries.', 'error-toast');
+    }
   }
 
   // ── Set max DOB to today ──
@@ -524,10 +539,16 @@
     const val = this.value.trim();
     const lookup = document.getElementById('idLookup');
     if (!val) { lookup.classList.remove('visible'); return; }
+    if (!/^\d{8}$/.test(val)) {
+      lookup.classList.add('visible');
+      lookup.innerHTML = `<span class="exists">⚠ National ID must be exactly 8 digits.</span>`;
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/citizen/check/${val}`);
+      const res = await fetch(`/api/citizen/check/${encodeURIComponent(val)}`);
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Lookup failed.');
       lookup.classList.add('visible');
       if (data.exists) {
         lookup.innerHTML = `<span class="exists">⚠ This National ID is already registered.</span>`;
@@ -568,6 +589,17 @@
       }
     });
 
+    const nationalId = document.getElementById('nationalId');
+    const nationalIdErr = document.getElementById('nationalIdError');
+    if (nationalId.value.trim() && !/^\d{8}$/.test(nationalId.value.trim())) {
+      nationalId.classList.add('error');
+      nationalIdErr.textContent = 'National ID must be exactly 8 digits.';
+      nationalIdErr.classList.add('visible');
+      valid = false;
+    } else if (nationalId.value.trim()) {
+      nationalIdErr.textContent = 'National ID is required.';
+    }
+
     // DOB check
     const dob = document.getElementById('dob');
     const dobErr = document.getElementById('dobError');
@@ -585,7 +617,7 @@
     const email = document.getElementById('email');
     const emailErr = document.getElementById('emailError');
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.value.trim() || !emailRegex.test(email.value)) {
+    if (!email.value.trim() || !emailRegex.test(email.value.trim())) {
       email.classList.add('error');
       emailErr.classList.add('visible');
       valid = false;
@@ -616,7 +648,7 @@
       nationality:      document.getElementById('nationality').value,
       email:            document.getElementById('email').value.trim(),
       address:          document.getElementById('address').value.trim(),
-      phone:            document.getElementById('phone').value,
+      phone:            document.getElementById('phone').value.trim(),
     };
 
     try {

@@ -236,6 +236,23 @@
 <script>
   let activeTab = 'passport';
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Verification failed.');
+    return data;
+  }
+
   function switchTab(tab) {
     activeTab = tab;
     document.querySelectorAll('.tab').forEach((t, i) => {
@@ -278,10 +295,9 @@
     try {
       const params = new URLSearchParams({ passportNo, officerId });
       if (nationalId) params.append('nationalId', nationalId);
-      const res  = await fetch(`/api/verify/passport?${params}`);
-      const data = await res.json();
+      const data = await getJson(`/api/verify/passport?${params.toString()}`);
       renderPassportResult(data);
-    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   function renderPassportResult(data) {
@@ -298,29 +314,29 @@
         <div class="result-icon">${icon}</div>
         <div>
           <div class="result-status ${statusClass}">${label}</div>
-          <div class="result-sub">${data.message || ''}</div>
+          <div class="result-sub">${escapeHtml(data.message || '')}</div>
         </div>
       </div>
       ${data.passport ? `
       <div class="result-body">
         <div class="result-grid">
-          <div class="result-field"><label>Passport No.</label><span>${data.passport.passportNo}</span></div>
-          <div class="result-field"><label>Citizen Name</label><span>${data.passport.citizenName}</span></div>
-          <div class="result-field"><label>National ID</label><span>${data.passport.nationalIdNo}</span></div>
-          <div class="result-field"><label>Type</label><span>${data.passport.passportType}</span></div>
-          <div class="result-field"><label>Issue Date</label><span>${data.passport.issueDate}</span></div>
-          <div class="result-field"><label>Expiry Date</label><span>${data.passport.expiryDate}</span></div>
-          <div class="result-field"><label>Nationality</label><span>${data.passport.nationality}</span></div>
-          <div class="result-field"><label>Issuing Office</label><span>${data.passport.issuingOffice}</span></div>
-          <div class="result-field"><label>Status</label><span class="badge badge-${data.passport.status.toLowerCase()}">${data.passport.status}</span></div>
+          <div class="result-field"><label>Passport No.</label><span>${escapeHtml(data.passport.passportNo)}</span></div>
+          <div class="result-field"><label>Citizen Name</label><span>${escapeHtml(data.passport.citizenName)}</span></div>
+          <div class="result-field"><label>National ID</label><span>${escapeHtml(data.passport.nationalIdNo)}</span></div>
+          <div class="result-field"><label>Type</label><span>${escapeHtml(data.passport.passportType)}</span></div>
+          <div class="result-field"><label>Issue Date</label><span>${escapeHtml(data.passport.issueDate)}</span></div>
+          <div class="result-field"><label>Expiry Date</label><span>${escapeHtml(data.passport.expiryDate)}</span></div>
+          <div class="result-field"><label>Nationality</label><span>${escapeHtml(data.passport.nationality)}</span></div>
+          <div class="result-field"><label>Issuing Office</label><span>${escapeHtml(data.passport.issuingOffice)}</span></div>
+          <div class="result-field"><label>Status</label><span class="badge badge-${escapeHtml(data.passport.status).toLowerCase()}">${escapeHtml(data.passport.status)}</span></div>
         </div>
         ${data.recentTravel && data.recentTravel.length ? `
         <div class="history-strip">
           <div class="history-label">Recent Travel (last 3)</div>
           ${data.recentTravel.map(t => `
             <div class="history-item">
-              <span>${t.departureCountry} → ${t.arrivalCountry}</span>
-              <span style="color:var(--grey)">${t.travelDate}</span>
+              <span>${escapeHtml(t.departureCountry)} → ${escapeHtml(t.arrivalCountry)}</span>
+              <span style="color:var(--grey)">${escapeHtml(t.travelDate)}</span>
             </div>`).join('')}
         </div>` : ''}
       </div>` : ''}
@@ -340,10 +356,9 @@
     try {
       const params = new URLSearchParams({ visaId, officerId });
       if (passportNo) params.append('passportNo', passportNo);
-      const res  = await fetch(`/api/verify/visa?${params}`);
-      const data = await res.json();
+      const data = await getJson(`/api/verify/visa?${params.toString()}`);
       renderVisaResult(data);
-    } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   function renderVisaResult(data) {
@@ -358,21 +373,21 @@
         <div class="result-icon">${icon}</div>
         <div>
           <div class="result-status ${statusClass}">${label}</div>
-          <div class="result-sub">${data.message || ''}</div>
+          <div class="result-sub">${escapeHtml(data.message || '')}</div>
         </div>
       </div>
       ${data.visa ? `
       <div class="result-body">
         <div class="result-grid">
-          <div class="result-field"><label>Visa ID</label><span>${data.visa.visaId}</span></div>
-          <div class="result-field"><label>Citizen Name</label><span>${data.visa.citizenName}</span></div>
-          <div class="result-field"><label>Visa Type</label><span>${data.visa.visaType}</span></div>
-          <div class="result-field"><label>Issue Date</label><span>${data.visa.issueDate || '—'}</span></div>
-          <div class="result-field"><label>Expiry Date</label><span>${data.visa.expiryDate || '—'}</span></div>
-          <div class="result-field"><label>Duration of Stay</label><span>${data.visa.durationOfStay ? data.visa.durationOfStay + ' months' : '—'}</span></div>
-          <div class="result-field"><label>Entries</label><span>${data.visa.numberOfEntries || '—'}</span></div>
-          <div class="result-field"><label>Passport No.</label><span>${data.visa.passportNo || '—'}</span></div>
-          <div class="result-field"><label>Status</label><span class="badge badge-${data.visa.status.toLowerCase()}">${data.visa.status}</span></div>
+          <div class="result-field"><label>Visa ID</label><span>${escapeHtml(data.visa.visaId)}</span></div>
+          <div class="result-field"><label>Citizen Name</label><span>${escapeHtml(data.visa.citizenName)}</span></div>
+          <div class="result-field"><label>Visa Type</label><span>${escapeHtml(data.visa.visaType)}</span></div>
+          <div class="result-field"><label>Issue Date</label><span>${escapeHtml(data.visa.issueDate || '—')}</span></div>
+          <div class="result-field"><label>Expiry Date</label><span>${escapeHtml(data.visa.expiryDate || '—')}</span></div>
+          <div class="result-field"><label>Duration of Stay</label><span>${escapeHtml(data.visa.durationOfStay ? data.visa.durationOfStay + ' months' : '—')}</span></div>
+          <div class="result-field"><label>Entries</label><span>${escapeHtml(data.visa.numberOfEntries || '—')}</span></div>
+          <div class="result-field"><label>Passport No.</label><span>${escapeHtml(data.visa.passportNo || '—')}</span></div>
+          <div class="result-field"><label>Status</label><span class="badge badge-${escapeHtml(data.visa.status).toLowerCase()}">${escapeHtml(data.visa.status)}</span></div>
         </div>
       </div>` : ''}
     `;
@@ -388,12 +403,10 @@
     if (!valid) return;
 
     try {
-      const res  = await fetch(`/api/verify/citizen?nationalId=${nationalId}&officerId=${officerId}`);
-      const data = await res.json();
+      const params = new URLSearchParams({ nationalId, officerId });
+      const data = await getJson(`/api/verify/citizen?${params.toString()}`);
       renderCitizenResult(data);
-    } catch (err) { 
-      console.error(err);
-      showToast(`✗ ${err.message}`, 'error-toast'); }
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   function renderCitizenResult(data) {
@@ -408,29 +421,29 @@
         <div class="result-icon">${icon}</div>
         <div>
           <div class="result-status ${statusClass}">${label}</div>
-          <div class="result-sub">${data.message || ''}</div>
+          <div class="result-sub">${escapeHtml(data.message || '')}</div>
         </div>
       </div>
       ${data.citizen ? `
       <div class="result-body">
         <div class="result-grid">
-          <div class="result-field"><label>National ID</label><span>${data.citizen.nationalIdNo}</span></div>
-          <div class="result-field"><label>Full Name</label><span>${data.citizen.fullName}</span></div>
-          <div class="result-field"><label>Date of Birth</label><span>${data.citizen.dob}</span></div>
-          <div class="result-field"><label>Gender</label><span>${data.citizen.gender}</span></div>
-          <div class="result-field"><label>Nationality</label><span>${data.citizen.nationality}</span></div>
-          <div class="result-field"><label>Country of Birth</label><span>${data.citizen.countryOfBirth}</span></div>
-          <div class="result-field"><label>Email</label><span>${data.citizen.email}</span></div>
-          <div class="result-field"><label>Phone</label><span>${data.citizen.phone}</span></div>
-          <div class="result-field"><label>Active Passports</label><span>${data.citizen.activePassports}</span></div>
+          <div class="result-field"><label>National ID</label><span>${escapeHtml(data.citizen.nationalIdNo)}</span></div>
+          <div class="result-field"><label>Full Name</label><span>${escapeHtml(data.citizen.fullName)}</span></div>
+          <div class="result-field"><label>Date of Birth</label><span>${escapeHtml(data.citizen.dob)}</span></div>
+          <div class="result-field"><label>Gender</label><span>${escapeHtml(data.citizen.gender)}</span></div>
+          <div class="result-field"><label>Nationality</label><span>${escapeHtml(data.citizen.nationality)}</span></div>
+          <div class="result-field"><label>Country of Birth</label><span>${escapeHtml(data.citizen.countryOfBirth)}</span></div>
+          <div class="result-field"><label>Email</label><span>${escapeHtml(data.citizen.email)}</span></div>
+          <div class="result-field"><label>Phone</label><span>${escapeHtml(data.citizen.phone)}</span></div>
+          <div class="result-field"><label>Active Passports</label><span>${escapeHtml(data.citizen.activePassports)}</span></div>
         </div>
         ${data.passports && data.passports.length ? `
         <div class="history-strip">
           <div class="history-label">Passport Records</div>
           ${data.passports.map(p => `
             <div class="history-item">
-              <span><strong>${p.passportNo}</strong> — ${p.passportType}</span>
-              <span><span class="badge badge-${p.passportStatus.toLowerCase()}">${p.passportStatus}</span> &nbsp; expires ${p.expiryDate}</span>
+              <span><strong>${escapeHtml(p.passportNo)}</strong> — ${escapeHtml(p.passportType)}</span>
+              <span><span class="badge badge-${escapeHtml(p.passportStatus).toLowerCase()}">${escapeHtml(p.passportStatus)}</span> &nbsp; expires ${escapeHtml(p.expiryDate)}</span>
             </div>`).join('')}
         </div>` : ''}
       </div>` : ''}

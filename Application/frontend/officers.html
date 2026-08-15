@@ -258,26 +258,45 @@
 <script>
   let selectedOfficerId = null;
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Request failed.');
+    return data;
+  }
+
   async function loadBorderPostsOptions(...selectIds) {
-    const posts = await fetch('/api/border-posts').then(r => r.json());
+    try {
+      const posts = await getJson('/api/border-posts');
+      if (!Array.isArray(posts)) throw new Error('Could not load border posts.');
 
-    selectIds.forEach(id => {
-      const select = document.getElementById(id);
-      select.innerHTML = '<option value="">— Select Border Post —</option>';
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">— Select Border Post —</option>';
 
-      posts.forEach(p => {
-        select.innerHTML +=
-          `<option value="${p.borderPostID}">
-            ${p.borderPostName} (${p.countryCode})
-          </option>`;
+        posts.forEach(p => {
+          select.innerHTML +=
+            `<option value="${escapeHtml(p.borderPostID)}">
+              ${escapeHtml(p.borderPostName)} (${escapeHtml(p.countryCode)})
+            </option>`;
+        });
       });
-    });
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   async function loadStats() {
     try {
-      const res = await fetch('/api/officers/stats');
-      const d = await res.json();
+      const d = await getJson('/api/officers/stats');
       document.getElementById('statTotal').textContent      = d.total      ?? '—';
       document.getElementById('statPosts').textContent      = d.posts      ?? '—';
       document.getElementById('statUnassigned').textContent = d.unassigned ?? '—';
@@ -291,21 +310,20 @@
     if (q)    params.append('q', q);
     if (post) params.append('post', post);
     try {
-      const res  = await fetch(`/api/officers?${params.toString()}`);
-      const data = await res.json();
+      const data = await getJson(`/api/officers?${params.toString()}`);
       const tbody = document.getElementById('officerTableBody');
       if (!data.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="4">No officers found.</td></tr>`; return; }
       tbody.innerHTML = data.map(o => `
         <tr>
-          <td><strong>${o.officerID}</strong></td>
+          <td><strong>${escapeHtml(o.officerID)}</strong></td>
           <td>
-            <span class="officer-avatar">${o.officerFirstName[0]}${o.officerLastName[0]}</span>
-            ${o.officerFirstName} ${o.officerLastName}
+            <span class="officer-avatar">${escapeHtml((o.officerFirstName || '?')[0])}${escapeHtml((o.officerLastName || '?')[0])}</span>
+            ${escapeHtml(o.officerFirstName)} ${escapeHtml(o.officerLastName)}
           </td>
-          <td>${o.borderPostName || o.borderPostID}</td>
-          <td><button class="btn btn-warning btn-sm" onclick="openReassign('${o.officerID}','${o.officerFirstName} ${o.officerLastName}')">Reassign</button></td>
+          <td>${escapeHtml(o.borderPostName || o.borderPostID)}</td>
+          <td><button class="btn btn-warning btn-sm" onclick="openReassign('${encodeURIComponent(o.officerID)}','${encodeURIComponent(`${o.officerFirstName} ${o.officerLastName}`)}')">Reassign</button></td>
         </tr>`).join('');
-    } catch { showToast('✗ Could not load officers.', 'error-toast'); }
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   function validateOfficer() {
@@ -317,6 +335,16 @@
       if (!el.value.trim()) { el.classList.add('error'); err.classList.add('visible'); valid = false; }
       else { el.classList.remove('error'); err.classList.remove('visible'); }
     });
+    const idEl = document.getElementById('officerID');
+    const idErr = document.getElementById('officerIDError');
+    if (idEl.value.trim() && !/^OF\d{5}$/.test(idEl.value.trim())) {
+      idEl.classList.add('error');
+      idErr.textContent = 'Officer ID must use the format OF00001.';
+      idErr.classList.add('visible');
+      valid = false;
+    } else if (idEl.value.trim()) {
+      idErr.textContent = 'Officer ID is required.';
+    }
     return valid;
   }
 
@@ -340,8 +368,9 @@
   }
 
   function openReassign(officerId, officerName) {
-    selectedOfficerId = officerId;
-    document.getElementById('modalOfficerName').value = `${officerId} -> ${officerName}`;
+    selectedOfficerId = decodeURIComponent(officerId);
+    const decodedName = decodeURIComponent(officerName);
+    document.getElementById('modalOfficerName').value = `${selectedOfficerId} -> ${decodedName}`;
     document.getElementById('newBorderPost').value = '';
     document.getElementById('reassignModal').classList.add('visible');
   }
@@ -354,22 +383,28 @@
         return;
     }
 
-    const res = await fetch('/api/officers/reassign', {
+    try {
+      const res = await fetch('/api/officers/reassign', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             officerID: selectedOfficerId,
             borderPostID: newPost
         })
-    });
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (res.ok) {
-        showToast('✓ Officer reassigned successfully.');
+      if (res.ok) {
+        showToast('✓ Officer reassigned successfully.', 'success');
+        closeModal();
         loadOfficers();
-    } else {
+        loadStats();
+      } else {
         showToast(`✗ ${data.message}`, 'error-toast');
+      }
+    } catch {
+      showToast('✗ Could not connect to server.', 'error-toast');
     }
 }
 
@@ -386,7 +421,7 @@
   }
 
   loadStats(); loadOfficers();
-  loadBorderPostsOptions('filterPost', 'newBorderPost');
+  loadBorderPostsOptions('officerBorderPost', 'filterPost', 'newBorderPost');
 </script>
 </body>
 </html>

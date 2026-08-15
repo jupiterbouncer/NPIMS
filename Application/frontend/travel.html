@@ -245,7 +245,6 @@
               <select id="arrivalCountry">
                 <option value="">— Select Country —</option>
               </select>
-              </select>
               <div class="field-error" id="arrivalError">Arrival country is required.</div>
             </div>
             <div class="form-group">
@@ -327,19 +326,25 @@
 
 <script>
   async function loadBorderPosts(...selectIds) {
-    const posts = await fetch('/api/border-posts').then(r => r.json());
+    try {
+      const res = await fetch('/api/border-posts');
+      const posts = await res.json();
+      if (!res.ok || !Array.isArray(posts)) throw new Error(posts.message || 'Failed to load border posts');
 
-    selectIds.forEach(id => {
-      const select = document.getElementById(id);
-      select.innerHTML = '<option value="">— Select Border Post —</option>';
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">— Select Border Post —</option>';
 
-      posts.forEach(p => {
-        select.innerHTML +=
-          `<option value="${p.borderPostID}">
-            ${p.borderPostName} (${p.countryCode})
-          </option>`;
+        posts.forEach(p => {
+          select.innerHTML +=
+            `<option value="${p.borderPostID}">
+              ${p.borderPostName} (${p.countryCode})
+            </option>`;
+        });
       });
-    });
+    } catch {
+      showToast('Could not load border posts.', 'error-toast');
+    }
   }
   document.getElementById('travelDate').max = new Date().toISOString().split('T')[0];
 
@@ -356,25 +361,32 @@
   }
 
   async function loadCountries(...selectIds) {
-    const countries = await fetch('/api/countries').then(r => r.json());
+    try {
+      const res = await fetch('/api/countries');
+      const countries = await res.json();
+      if (!res.ok || !Array.isArray(countries)) throw new Error(countries.message || 'Failed to load countries');
 
-    selectIds.forEach(id => {
-      const select = document.getElementById(id);
-      select.innerHTML = '<option value="">— Select Country —</option>';
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">— Select Country —</option>';
 
-      countries.forEach(c => {
-        select.innerHTML +=
-        ` <option value="${c.countryCode}">${c.countryName}</option>`;
+        countries.forEach(c => {
+          select.innerHTML +=
+          ` <option value="${c.countryCode}">${c.countryName}</option>`;
+        });
       });
-    });
+    } catch {
+      showToast('Could not load countries.', 'error-toast');
+    }
   }
 
   async function loadCitizenTravel() {
     const id = document.getElementById('citizenLookupId').value.trim();
     if (!id) { showToast('Enter your National ID.','info'); return; }
     try {
-      const res = await fetch(`/api/travel/citizen/${id}`);
+      const res = await fetch(`/api/travel/citizen/${encodeURIComponent(id)}`);
       const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Failed to load travel records');
       const card = document.getElementById('citizenTimelineCard');
       card.style.display = 'block';
       document.getElementById('citizenTravelCount').textContent = `${data.length} record${data.length!==1?'s':''}`;
@@ -400,6 +412,7 @@
     try {
       const res = await fetch('/api/travel/stats');
       const d = await res.json();
+      if (!res.ok) throw new Error(d.message || 'Failed to load stats');
       document.getElementById('statTotal').textContent   = d.total   ?? '—';
       document.getElementById('statEntries').textContent = d.entries  ?? '—';
       document.getElementById('statExits').textContent   = d.exits    ?? '—';
@@ -411,18 +424,25 @@
     const nationalId = document.getElementById('travelNationalId').value.trim();
     const passportNo = document.getElementById('travelPassportNo').value.trim();
     const result = document.getElementById('verifyResult');
-    if (!nationalId||!passportNo) { result.className='verify-result'; return; }
+    if (!nationalId||!passportNo) { result.className='verify-result'; return null; }
     try {
-      const res = await fetch(`/api/passport/verify?nationalId=${nationalId}&passportNo=${passportNo}`);
+      const params = new URLSearchParams({ nationalId, passportNo });
+      const res = await fetch(`/api/passport/verify?${params.toString()}`);
       const data = await res.json();
       if (data.valid) {
         result.className='verify-result valid';
         result.textContent=`✓ Valid — ${data.citizenName} — expires ${data.expiryDate}`;
+        return true;
       } else {
         result.className='verify-result invalid';
         result.textContent=`✗ ${data.message||'Invalid or mismatched passport.'}`;
+        return false;
       }
-    } catch { result.className='verify-result'; }
+    } catch {
+      result.className='verify-result invalid';
+      result.textContent='✗ Could not verify passport.';
+      return false;
+    }
   }
 
   function validateTravel() {
@@ -438,7 +458,10 @@
     });
     const td=document.getElementById('travelDate'), tdErr=document.getElementById('travelDateError');
     if(!td.value){td.classList.add('error');tdErr.classList.add('visible');valid=false;}
-    else{td.classList.remove('error');tdErr.classList.remove('visible');}
+    else if(td.value > new Date().toISOString().split('T')[0]){
+      td.classList.add('error');tdErr.textContent='Travel date cannot be in the future.';tdErr.classList.add('visible');valid=false;
+    }
+    else{td.classList.remove('error');tdErr.textContent='Travel date is required.';tdErr.classList.remove('visible');}
     const dep=document.getElementById('departureCountry').value, arr=document.getElementById('arrivalCountry').value;
     if(dep&&arr&&dep===arr){showToast('✗ Departure and arrival cannot be the same.','error-toast');valid=false;}
     return valid;
@@ -446,6 +469,11 @@
 
   async function submitTravelRecord() {
     if (!validateTravel()) return;
+    const passportOk = await verifyPassport();
+    if (passportOk !== true) {
+      showToast('✗ Verify a valid active passport before logging travel.', 'error-toast');
+      return;
+    }
     const btn=document.getElementById('travelSubmitBtn');
     btn.disabled=true; btn.textContent='Logging...';
     const payload={
@@ -471,7 +499,9 @@
   async function loadAllRecords() {
     try {
       const res=await fetch('/api/travel/all');
-      renderRecords(await res.json());
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Could not load records');
+      renderRecords(data);
     } catch { showToast('✗ Could not load records.','error-toast'); }
   }
 
@@ -489,7 +519,9 @@
     if(to) params.append('to',to);
     try {
       const res=await fetch(`/api/travel/all?${params.toString()}`);
-      renderRecords(await res.json());
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Filter failed');
+      renderRecords(data);
     } catch { showToast('✗ Filter failed.','error-toast'); }
   }
 

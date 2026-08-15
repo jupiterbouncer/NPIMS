@@ -130,6 +130,30 @@
     <div class="stat-card"><div class="stat-label">Sea Ports</div><div class="stat-value" id="statSea">—</div><div class="stat-sub">Port entries</div></div>
   </div>
 
+  <!-- Crossing report -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <span class="card-header-icon">📊</span>
+        <h2>Crossing Report</h2>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadCrossingReport()">↻ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Border Post</th><th>Type</th><th>Country</th>
+            <th>Officers</th><th>Total Crossings</th><th>Last Crossing</th>
+          </tr>
+        </thead>
+        <tbody id="crossingReportBody">
+          <tr class="empty-row"><td colspan="6">Loading crossing report...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Register border post -->
   <div class="card">
     <div class="card-header">
@@ -231,45 +255,91 @@
 <script>
   const typeIcon = { Airport:'✈️', Land:'🛣️', Sea:'⚓' };
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Request failed.');
+    return data;
+  }
+
   async function loadCountries(...selectIds) {
-    const countries = await fetch('/api/countries').then(r => r.json());
+    try {
+      const countries = await getJson('/api/countries');
+      if (!Array.isArray(countries)) throw new Error('Could not load countries.');
 
-    selectIds.forEach(id => {
-      const select = document.getElementById(id);
-      select.innerHTML = '<option value="">— Select Country —</option>';
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        const placeholder = id === 'filterCountry' ? 'All Countries' : '— Select Country —';
+        select.innerHTML = `<option value="">${placeholder}</option>`;
 
-      countries.forEach(c => {
-        select.innerHTML +=
-        ` <option value="${c.countryCode}">${c.countryName}</option>`;
+        countries.forEach(c => {
+          select.innerHTML +=
+          ` <option value="${escapeHtml(c.countryCode)}">${escapeHtml(c.countryName)}</option>`;
+        });
       });
-    });
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   async function loadBorderPostsOptions(...selectIds) {
-    const posts = await fetch('/api/border-posts').then(r => r.json());
+    try {
+      const posts = await getJson('/api/border-posts');
+      if (!Array.isArray(posts)) throw new Error('Could not load border posts.');
 
-    selectIds.forEach(id => {
-      const select = document.getElementById(id);
-      select.innerHTML = '<option value="">— Select Border Post —</option>';
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">— Select Border Post —</option>';
 
-      posts.forEach(p => {
-        select.innerHTML +=
-          `<option value="${p.borderPostID}">
-            ${p.borderPostName} (${p.countryCode})
-          </option>`;
+        posts.forEach(p => {
+          select.innerHTML +=
+            `<option value="${escapeHtml(p.borderPostID)}">
+              ${escapeHtml(p.borderPostName)} (${escapeHtml(p.countryCode)})
+            </option>`;
+        });
       });
-    });
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   async function loadStats() {
     try {
-      const res = await fetch('/api/border/stats');
-      const d = await res.json();
+      const d = await getJson('/api/border/stats');
       document.getElementById('statTotal').textContent   = d.total   ?? '—';
       document.getElementById('statAirport').textContent = d.airports ?? '—';
       document.getElementById('statLand').textContent    = d.land    ?? '—';
       document.getElementById('statSea').textContent     = d.sea     ?? '—';
     } catch {}
+  }
+
+  async function loadCrossingReport() {
+    try {
+      const data = await getJson('/api/reports/border-crossings-summary');
+      const tbody = document.getElementById('crossingReportBody');
+      if (!data.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No crossing report data found.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map(r => `
+        <tr>
+          <td><strong>${escapeHtml(r.borderPostName)}</strong><br><span style="color:var(--grey);font-size:11px;">${escapeHtml(r.borderPostID)}</span></td>
+          <td><span class="badge badge-${escapeHtml(r.borderType).toLowerCase()}">${escapeHtml(r.borderType)}</span></td>
+          <td>${escapeHtml(r.country)}</td>
+          <td>${escapeHtml(r.officerCount ?? 0)}</td>
+          <td>${escapeHtml(r.totalCrossings ?? 0)}</td>
+          <td>${escapeHtml(r.lastCrossingDate || '—')}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      showToast(`✗ ${err.message}`, 'error-toast');
+    }
   }
 
   async function loadBorderPosts() {
@@ -279,50 +349,48 @@
     if (type)    params.append('type', type);
     if (country) params.append('country', country);
     try {
-      const res  = await fetch(`/api/border/posts?${params.toString()}`);
-      const data = await res.json();
+      const data = await getJson(`/api/border/posts?${params.toString()}`);
       const grid = document.getElementById('postsGrid');
       if (!data.length) { grid.innerHTML = `<p style="color:var(--grey);font-style:italic;padding:8px;">No border posts found.</p>`; return; }
       grid.innerHTML = data.map(p => `
         <div class="post-card">
-          <div class="post-card-header ${p.borderType.toLowerCase()}">
+          <div class="post-card-header ${escapeHtml(p.borderType).toLowerCase()}">
             <div>
-              <div class="post-card-title">${typeIcon[p.borderType] || '📍'} ${p.borderPostName}</div>
-              <div class="post-card-id">${p.borderPostID}</div>
+              <div class="post-card-title">${typeIcon[p.borderType] || '📍'} ${escapeHtml(p.borderPostName)}</div>
+              <div class="post-card-id">${escapeHtml(p.borderPostID)}</div>
             </div>
-            <span class="badge badge-${p.borderType.toLowerCase()}">${p.borderType}</span>
+            <span class="badge badge-${escapeHtml(p.borderType).toLowerCase()}">${escapeHtml(p.borderType)}</span>
           </div>
           <div class="post-card-body">
-            <div class="post-stat"><span class="post-stat-label">Country</span><span class="post-stat-value">${p.countryCode}</span></div>
-            <div class="post-stat"><span class="post-stat-label">Officers Deployed</span><span class="post-stat-value">${p.officerCount ?? 0}</span></div>
-            <div class="post-stat"><span class="post-stat-label">Total Crossings</span><span class="post-stat-value">${p.crossingCount ?? 0}</span></div>
+            <div class="post-stat"><span class="post-stat-label">Country</span><span class="post-stat-value">${escapeHtml(p.countryName || p.countryCode)}</span></div>
+            <div class="post-stat"><span class="post-stat-label">Officers Deployed</span><span class="post-stat-value">${escapeHtml(p.officerCount ?? 0)}</span></div>
+            <div class="post-stat"><span class="post-stat-label">Total Crossings</span><span class="post-stat-value">${escapeHtml(p.crossingCount ?? 0)}</span></div>
           </div>
           <div class="post-card-footer">
             <div class="officers-list">
               ${p.officers 
-                  ?  p.officers.split(', ').map(o => `<span class="officer-chip">👮 ${o}</span>`).join('')
+                  ?  p.officers.split(', ').map(o => `<span class="officer-chip">👮 ${escapeHtml(o)}</span>`).join('')
                 : '<span style="color:var(--grey);font-style:italic;">No officers assigned</span>'}
             </div>
           </div>
         </div>`).join('');
-    } catch { showToast('✗ Could not load border posts.', 'error-toast'); }
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   async function loadDeployments() {
     try {
-      const res  = await fetch('/api/border/deployments');
-      const data = await res.json();
+      const data = await getJson('/api/border/deployments');
       const tbody = document.getElementById('deploymentBody');
       if (!data.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No deployments found.</td></tr>`; return; }
       tbody.innerHTML = data.map(d => `
         <tr>
-          <td><strong>${d.officerID}</strong></td>
-          <td>${d.officerFirstName} ${d.officerLastName}</td>
-          <td>${d.borderPostName}</td>
-          <td><span class="badge badge-${d.borderType.toLowerCase()}">${d.borderType}</span></td>
-          <td>${d.countryCode}</td>
+          <td><strong>${escapeHtml(d.officerID)}</strong></td>
+          <td>${escapeHtml(d.officerFirstName)} ${escapeHtml(d.officerLastName)}</td>
+          <td>${escapeHtml(d.borderPostName)}</td>
+          <td><span class="badge badge-${escapeHtml(d.borderType).toLowerCase()}">${escapeHtml(d.borderType)}</span></td>
+          <td>${escapeHtml(d.countryCode)}</td>
         </tr>`).join('');
-    } catch { showToast('✗ Could not load deployments.', 'error-toast'); }
+    } catch (err) { showToast(`✗ ${err.message}`, 'error-toast'); }
   }
 
   function validateBorder() {
@@ -334,6 +402,16 @@
       if (!el.value.trim()) { el.classList.add('error'); err.classList.add('visible'); valid = false; }
       else { el.classList.remove('error'); err.classList.remove('visible'); }
     });
+    const idEl = document.getElementById('borderPostID');
+    const idErr = document.getElementById('borderPostIDError');
+    if (idEl.value.trim() && !/^BP\d{5}$/.test(idEl.value.trim())) {
+      idEl.classList.add('error');
+      idErr.textContent = 'Border Post ID must use the format BP00001.';
+      idErr.classList.add('visible');
+      valid = false;
+    } else if (idEl.value.trim()) {
+      idErr.textContent = 'Border Post ID is required.';
+    }
     return valid;
   }
 
@@ -350,7 +428,7 @@
     try {
       const res = await fetch('/api/border/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const data = await res.json();
-      if (res.ok) { showToast('✓ Border post registered.', 'success'); resetBorderForm(); loadBorderPosts(); loadStats(); }
+      if (res.ok) { showToast('✓ Border post registered.', 'success'); resetBorderForm(); loadBorderPosts(); loadStats(); loadCrossingReport(); loadCountries('borderCountry', 'filterCountry'); }
       else { showToast(`✗ ${data.message || 'Failed.'}`, 'error-toast'); }
     } catch { showToast('✗ Could not connect to server.', 'error-toast'); }
     finally { btn.disabled = false; btn.textContent = 'Register Border Post'; }
@@ -368,7 +446,7 @@
     setTimeout(() => t.classList.remove('show'), 3500);
   }
 
-  loadStats(); loadBorderPosts(); loadDeployments();
+  loadStats(); loadCrossingReport(); loadBorderPosts(); loadDeployments();
   loadCountries('borderCountry', 'filterCountry');
 </script>
 </body>
