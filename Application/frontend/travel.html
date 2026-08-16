@@ -182,8 +182,8 @@
 
     <div class="stats-bar">
       <div class="stat-card"><div class="stat-label">Total Records</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">All time</div></div>
-      <div class="stat-card"><div class="stat-label">Today's Entries</div><div class="stat-value" id="statEntries">—</div><div class="stat-sub">Inbound</div></div>
-      <div class="stat-card"><div class="stat-label">Today's Exits</div><div class="stat-value" id="statExits">—</div><div class="stat-sub">Outbound</div></div>
+      <div class="stat-card"><div class="stat-label">Inbound Today</div><div class="stat-value" id="statEntries">—</div><div class="stat-sub">Entries recorded</div></div>
+      <div class="stat-card"><div class="stat-label">Outbound Today</div><div class="stat-value" id="statExits">—</div><div class="stat-sub">Exits recorded</div></div>
       <div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value" id="statMonth">—</div><div class="stat-sub">Total crossings</div></div>
     </div>
 
@@ -325,6 +325,16 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
+  }
+
   async function loadBorderPosts(...selectIds) {
     try {
       const res = await fetch('/api/border-posts');
@@ -337,8 +347,8 @@
 
         posts.forEach(p => {
           select.innerHTML +=
-            `<option value="${p.borderPostID}">
-              ${p.borderPostName} (${p.countryCode})
+            `<option value="${escapeHtml(p.borderPostID)}">
+              ${escapeHtml(p.borderPostName)} (${escapeHtml(p.countryCode)})
             </option>`;
         });
       });
@@ -372,7 +382,7 @@
 
         countries.forEach(c => {
           select.innerHTML +=
-          ` <option value="${c.countryCode}">${c.countryName}</option>`;
+          ` <option value="${escapeHtml(c.countryCode)}">${escapeHtml(c.countryName)}</option>`;
         });
       });
     } catch {
@@ -394,16 +404,16 @@
       if (!data.length) { timeline.innerHTML=`<div style="text-align:center;color:var(--grey);padding:28px;font-style:italic;">No travel records found.</div>`; return; }
       timeline.innerHTML = data.map(r=>`
         <div class="timeline-item">
-          <div class="timeline-icon ${r.entryOrExit}">${r.entryOrExit==='entry'?'🛬':'🛫'}</div>
+          <div class="timeline-icon ${escapeHtml(r.entryOrExit)}">${r.entryOrExit==='entry'?'🛬':'🛫'}</div>
           <div class="timeline-content">
-            <div class="timeline-title">${r.departureCountry} → ${r.arrivalCountry} <span class="badge badge-${r.entryOrExit}" style="margin-left:8px;">${r.entryOrExit}</span></div>
+            <div class="timeline-title">${escapeHtml(r.departureCountry)} → ${escapeHtml(r.arrivalCountry)} <span class="badge badge-${escapeHtml(r.entryOrExit)}" style="margin-left:8px;">${escapeHtml(r.entryOrExit)}</span></div>
             <div class="timeline-meta">
-              <span>📍 ${r.borderPost}</span>
-              <span class="badge badge-${r.modeOfTravel.toLowerCase()}">${r.modeOfTravel.toLowerCase()}</span>
-              <span>🪪 ${r.passportNo}</span>
+              <span>📍 ${escapeHtml(r.borderPost)}</span>
+              <span class="badge badge-${escapeHtml(r.modeOfTravel).toLowerCase()}">${escapeHtml(r.modeOfTravel).toLowerCase()}</span>
+              <span>🪪 ${escapeHtml(r.passportNo)}</span>
             </div>
           </div>
-          <div class="timeline-date">${formatDate(r.travelDate)}</div>
+          <div class="timeline-date">${escapeHtml(formatDate(r.travelDate))}</div>
         </div>`).join('');
     } catch { showToast('✗ Could not load travel records.','error-toast'); }
   }
@@ -530,15 +540,15 @@
     if(!data.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="9">No records found.</td></tr>`;return;}
     tbody.innerHTML=data.map(r=>`
       <tr>
-        <td><strong>${r.travelID}</strong></td>
-        <td>${r.nationalIDNo}</td>
-        <td>${r.passportNo}</td>
-        <td><span class="badge badge-${r.entryOrExit}">${r.entryOrExit}</span></td>
-        <td>${r.departureCountry}</td>
-        <td>${r.arrivalCountry}</td>
-        <td><span class="badge badge-${r.modeOfTravel.toLowerCase()}">${r.modeOfTravel.toLowerCase()}</span></td>
-        <td>${formatDate(r.travelDate)}</td>
-        <td>${r.borderPost}</td>
+        <td><strong>${escapeHtml(r.travelID)}</strong></td>
+        <td>${escapeHtml(r.nationalIDNo)}</td>
+        <td>${escapeHtml(r.passportNo)}</td>
+        <td><span class="badge badge-${escapeHtml(r.entryOrExit)}">${escapeHtml(r.entryOrExit)}</span></td>
+        <td>${escapeHtml(r.departureCountry)}</td>
+        <td>${escapeHtml(r.arrivalCountry)}</td>
+        <td><span class="badge badge-${escapeHtml(r.modeOfTravel).toLowerCase()}">${escapeHtml(r.modeOfTravel).toLowerCase()}</span></td>
+        <td>${escapeHtml(formatDate(r.travelDate))}</td>
+        <td>${escapeHtml(r.borderPost)}</td>
       </tr>`).join('');
   }
 
